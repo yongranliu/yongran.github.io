@@ -226,19 +226,6 @@ body{color:#35362f;font-weight:400}
 #detailDialog .detail-head[data-art-layout="poster"] .detail-backdrop::after{background:linear-gradient(180deg,rgba(252,247,238,.1) 0%,rgba(252,247,238,.2) 55%,rgba(255,253,248,.92) 90%,rgb(255,253,248) 100%)}
 
 /* 4. 花瓣：只给 86（对应用户截图），其他作品不加 */
-#detailDialog .detail-head[data-subject="302189"]::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 6C5 0 14-1 19 5c-5 6-13 7-18 1z' fill='%23cf4c36' transform='rotate(-20 10 6)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 6C5 0 14-1 19 5c-5 6-13 7-18 1z' fill='%23d9604c' transform='rotate(30 10 6)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 6C5 0 14-1 19 5c-5 6-13 7-18 1z' fill='%23e07a63' transform='rotate(-50 10 6)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 6C5 0 14-1 19 5c-5 6-13 7-18 1z' fill='%23cf4c36' transform='rotate(65 10 6)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 6C5 0 14-1 19 5c-5 6-13 7-18 1z' fill='%23e38b75' transform='rotate(10 10 6)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 6C5 0 14-1 19 5c-5 6-13 7-18 1z' fill='%23d9604c' transform='rotate(-35 10 6)'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;
-  background-size:22px 13px,16px 10px,19px 11px,14px 9px,18px 11px,15px 9px;
-  background-position:24% 12%,62% 9%,86% 34%,8% 46%,44% 30%,93% 70%;
-  opacity:.85;animation:zjPetals 1.1s cubic-bezier(.2,.7,.2,1) both}
-@keyframes zjPetals{from{opacity:0;transform:translateY(-10px)}to{opacity:.85;transform:none}}
 
 /* 5. 标题与文字 */
 #detailDialog #detailTitle{font-family:var(--font-display);font-weight:700;font-size:30px;text-shadow:0 1px 16px rgba(255,253,248,.9)}
@@ -246,7 +233,6 @@ body{color:#35362f;font-weight:400}
 #detailDialog .detail-meta{text-shadow:0 1px 10px rgba(255,253,248,.9)}
 #detailDialog .detail-cover{box-shadow:0 20px 36px -14px rgba(40,24,10,.55);border-radius:14px;position:relative;z-index:1}
 
-@media (prefers-reduced-motion:reduce){#detailDialog .detail-head::before{animation:none}}
 @media (max-width:650px){
   #detailDialog .detail-head{min-height:300px;padding:96px 18px 20px}
   #detailDialog #detailTitle{font-size:24px}
@@ -278,3 +264,84 @@ body{padding-bottom:84px}
 .art-credit-grid p{font-size:12.5px}
 .breadcrumb,.breadcrumb span,.portfolio-link{font-size:12.5px}
 #detailDialog .progress-note{font-size:12.5px;color:var(--muted)}
+
+/* ===== 帧间 v4（2026-10-25）：详情页大图、轮换装饰、我的评分、字体 ===== */
+:root{--font-hand:"LXGW WenKai Screen","Journal Display","Noto Serif SC",serif}
+
+/* -- 只有封面的作品：封面放大铺在右侧，像 86 一样渐隐 -- */
+#detailDialog .detail-head[data-art-layout="poster"] .detail-backdrop>img:first-child{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(60px) saturate(1.3);transform:scale(1.6);opacity:.5}
+#detailDialog .detail-head[data-art-layout="poster"] .detail-backdrop>img.poster-art{position:absolute;top:0;right:0;left:auto;width:66%;height:100%;object-fit:cover;object-position:50% 22%;opacity:0;filter:none;transform:none;transition:opacity .5s ease;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 22%,#000 46%);mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 22%,#000 46%)}
+#detailDialog .detail-head[data-art-layout="poster"] .detail-backdrop>img.poster-art.is-loaded{opacity:1}
+#detailDialog .detail-head[data-art-layout="poster"] .detail-backdrop::after{background:
+  radial-gradient(48% 46% at 34% 80%,rgba(252,247,238,.86) 0%,rgba(252,247,238,.5) 48%,rgba(252,247,238,0) 80%),
+  linear-gradient(90deg,rgba(252,247,238,.9) 0%,rgba(252,247,238,.6) 22%,rgba(252,247,238,0) 50%),
+  linear-gradient(180deg,rgba(252,247,238,0) 0%,rgba(252,247,238,.1) 45%,rgba(252,247,238,.72) 76%,rgba(255,253,248,.97) 94%,#fffdf8 100%)}
+
+/* -- 轮换装饰：花瓣 / 星光 / 雪 / 泡泡 / 萤火 -- */
+#detailDialog .detail-deco{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+#detailDialog .detail-deco i{position:absolute;left:var(--x);top:-6%;display:block;width:calc(16px*var(--s));height:calc(16px*var(--s));animation-duration:var(--t);animation-delay:var(--d);animation-iteration-count:infinite;animation-timing-function:linear;will-change:transform,opacity}
+/* 花瓣 */
+#detailDialog [data-deco="petals"] .detail-deco i{background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 1C15 4 18 9 10 19 2 9 5 4 10 1Z' fill='%23e47a66' fill-opacity='.85'/%3E%3C/svg%3E");animation-name:zjFall}
+#detailDialog [data-deco="petals"] .detail-deco i:nth-child(3n){filter:hue-rotate(-18deg) brightness(1.15)}
+#detailDialog [data-deco="petals"] .detail-deco i:nth-child(4n){opacity:.7}
+@keyframes zjFall{0%{transform:translate(0,0) rotate(0);opacity:0}8%{opacity:.9}50%{transform:translate(-38px,210px) rotate(160deg)}92%{opacity:.85}100%{transform:translate(18px,430px) rotate(320deg);opacity:0}}
+/* 星光 */
+#detailDialog [data-deco="sparkle"] .detail-deco i{top:var(--y);width:calc(20px*var(--s));height:calc(20px*var(--s));background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 0L11.2 8.8 20 10 11.2 11.2 10 20 8.8 11.2 0 10 8.8 8.8Z' fill='%23ffd36e'/%3E%3C/svg%3E");filter:drop-shadow(0 0 5px rgba(255,190,90,.95)) drop-shadow(0 0 1px rgba(180,110,40,.5));animation-name:zjTwinkle;animation-timing-function:ease-in-out;animation-duration:calc(var(--t)*.35)}
+@keyframes zjTwinkle{0%,100%{transform:scale(.2) rotate(0);opacity:0}50%{transform:scale(1) rotate(45deg);opacity:1}}
+/* 雪 */
+#detailDialog [data-deco="snow"] .detail-deco i{width:calc(7px*var(--s));height:calc(7px*var(--s));border-radius:50%;background:radial-gradient(circle,#fff 0%,rgba(255,255,255,.9) 50%,rgba(255,255,255,0) 72%);filter:drop-shadow(0 0 2px rgba(110,130,160,.45));animation-name:zjSnow}
+@keyframes zjSnow{0%{transform:translate(0,0);opacity:0}10%{opacity:.95}50%{transform:translate(16px,210px)}100%{transform:translate(-10px,430px);opacity:0}}
+/* 泡泡 */
+#detailDialog [data-deco="bubble"] .detail-deco i{top:auto;bottom:-8%;width:calc(26px*var(--s));height:calc(26px*var(--s));border-radius:50%;border:1.5px solid rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(140,110,80,.18),inset 0 0 6px rgba(255,255,255,.6);background:radial-gradient(circle at 32% 30%,rgba(255,255,255,.85) 0 12%,rgba(255,255,255,.08) 30%,rgba(255,255,255,.18) 100%);animation-name:zjRise;animation-timing-function:ease-in}
+@keyframes zjRise{0%{transform:translate(0,0) scale(.6);opacity:0}12%{opacity:.9}100%{transform:translate(22px,-420px) scale(1.05);opacity:0}}
+/* 萤火 */
+#detailDialog [data-deco="firefly"] .detail-deco i{top:var(--y);width:calc(6px*var(--s));height:calc(6px*var(--s));border-radius:50%;background:#ffc85a;box-shadow:0 0 8px 3px rgba(255,170,60,.85),0 0 20px 8px rgba(255,160,60,.35);animation-name:zjDrift;animation-timing-function:ease-in-out;animation-direction:alternate}
+@keyframes zjDrift{0%{transform:translate(0,0);opacity:.1}30%{opacity:1}60%{transform:translate(30px,-26px);opacity:.5}100%{transform:translate(-18px,-50px);opacity:.95}}
+@media (prefers-reduced-motion:reduce){#detailDialog .detail-deco i{animation:none;opacity:.75;top:var(--y)}}
+
+/* -- 我的评分优先 -- */
+#detailDialog .detail-badges>.detail-myscore{background:#fff7e8;color:#b5532f;border:1.5px solid #e9b98f;font-size:14px;font-weight:600;padding:5px 14px;box-shadow:0 4px 14px rgba(181,83,47,.14)}
+#detailDialog .detail-myscore b{font-family:var(--font-display);font-size:19px;line-height:1;margin-left:3px}
+#detailDialog .detail-myscore small{font-size:12px;color:#c38a6c;font-weight:400}
+#detailDialog .detail-badges>span{font-size:13.5px}
+
+/* -- 字体：标题保留衬线，个人文字用霞鹜文楷，小字放大 -- */
+body{font-size:15px}
+#detailDialog #detailTitle{font-size:32px}
+.card-content h3{font-family:var(--font-hand);font-size:18px;font-weight:400;letter-spacing:.01em}
+.card-comment{font-family:var(--font-hand);font-size:14.5px;line-height:1.7}
+.editors-note blockquote{font-family:var(--font-hand)}
+.editorial-copy p{font-family:var(--font-hand);font-size:15.5px;line-height:1.8}
+.editorial-copy h3{font-family:var(--font-hand)}
+.journal-comment{font-family:var(--font-hand)!important;font-size:16.5px!important}
+#detailDialog .detail-story .detail-summary{font-family:var(--font-hand);font-size:16.5px;line-height:1.95;color:#5d554a}
+.detail-story h3,.journal-panel-heading h3{font-family:var(--font-display);font-weight:600}
+.intro-heading p,.closing-note p,.note-top span{font-family:var(--font-hand)}
+.intro-heading p{font-size:16px}
+.journal-facts strong small{font-size:13.5px}
+.journal-facts small,.fact-label span{font-size:14px}
+/* 小字 */
+.rating-seal small{font-size:12px}
+.snapshot-label span,footer span,footer a,.art-credit summary{font-size:13px}
+.brand-sign small{font-size:13px}
+.nav-item span,.tab span{font-size:13px}
+#libraryCount{font-size:13.5px}
+.surprise-btn{font-size:13.5px}
+.result-line span,.load-more p,.closing-note a{font-size:13.5px}
+.source-link,.top-actions .button span,.intro-kicker,.note-bottom span,.note-bottom em,.music-track span{font-size:13.5px}
+.poster-status,.poster-hover span{font-size:13px}
+.poster-score{font-size:14px}
+.card-tags span{font-size:13px}
+.portfolio-link,.breadcrumb,.breadcrumb b,.breadcrumb span{font-size:13.5px}
+.metric-name,.card-progress span{font-size:14px}
+.art-credit-grid p,.art-credit-grid a{font-size:13.5px}
+.card-meta span,.cover-info span,.note-author,.editorial-kicker,.editorial-link,.feature-option{font-size:14px}
+@media (max-width:650px){
+  #detailDialog .detail-head[data-art-layout="poster"] .detail-backdrop>img.poster-art{width:100%;-webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.5) 30%,#000 70%);mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.5) 30%,#000 70%)}
+  #detailDialog #detailTitle{font-size:25px}
+  #detailDialog .detail-head[data-art-layout="poster"] .detail-backdrop::after{background:
+    radial-gradient(70% 40% at 60% 74%,rgba(252,247,238,.9) 0%,rgba(252,247,238,.55) 55%,rgba(252,247,238,0) 85%),
+    linear-gradient(180deg,rgba(252,247,238,0) 0%,rgba(252,247,238,.15) 30%,rgba(252,247,238,.8) 62%,#fffdf8 92%)}
+  #detailDialog .detail-story .detail-summary,.journal-comment{font-size:15.5px!important}
+}
