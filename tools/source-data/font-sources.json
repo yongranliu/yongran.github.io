@@ -1,0 +1,32 @@
+{
+  "font": "Noto Sans SC, project character subset",
+  "source_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+  "source_page": "https://github.com/google/fonts/tree/main/ofl/notosanssc",
+  "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt",
+  "license": "SIL Open Font License 1.1",
+  "original_bytes": 17772300,
+  "woff2_bytes": 787068,
+  "requested_characters": 3269,
+  "encoded_characters": 2866,
+  "axes": [
+    {
+      "tag": "wght",
+      "min": 400.0,
+      "default": 400.0,
+      "max": 700.0
+    }
+  ],
+  "sha256": "96a54d1f1afb2ea247201f5f36448606e81c85db53b40eeaaccc7d6aa19ebba5",
+  "subset_inputs": [
+    "/workspace/sites/haoran-anime-detail-polish-20261024/dist/app.js",
+    "/workspace/sites/haoran-anime-detail-polish-20261024/dist/index.html",
+    "/workspace/sites/haoran-anime-detail-polish-20261024/dist/music.js",
+    "/workspace/sites/haoran-anime-detail-polish-20261024/dist/data.json",
+    "/workspace/sites/haoran-anime-detail-polish-20261024/dist/metadata.json"
+  ],
+  "notice": "Project subset preserves original license/name/copyright data. Newly synced rare characters require browser font fallbacks.",
+  "interpreter": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+  "pythonpath": "/workspace/scratch/b41d0175a79d/font-candidates/_build_deps",
+  "updated_for_final_ui": true,
+  "added_cjk": "尚"
+}

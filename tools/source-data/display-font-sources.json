@@ -1,0 +1,29 @@
+{
+  "font": "Noto Serif SC project display subset",
+  "css_family": "Journal Display",
+  "source_page": "https://github.com/google/fonts/tree/main/ofl/notoserifsc",
+  "source_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf",
+  "license": "SIL Open Font License 1.1",
+  "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifsc/OFL.txt",
+  "original_bytes": 25125512,
+  "woff2_bytes": 1002724,
+  "requested_characters": 2933,
+  "encoded_characters": 2813,
+  "axes": [
+    {
+      "tag": "wght",
+      "min": 400.0,
+      "default": 400.0,
+      "max": 600.0
+    }
+  ],
+  "sha256": "788126ba42cdab898702d1f8cfb871c5e47e0433096db314f176a8aea24e56e7",
+  "subset_inputs": [
+    "app.js",
+    "index.html",
+    "music.js",
+    "data.json",
+    "metadata.json"
+  ],
+  "notice": "Use for display titles at moderate weight; keep Journal Sans for UI/body. Future imported rare characters require fallback. Original copyright/name and OFL preserved."
+}
