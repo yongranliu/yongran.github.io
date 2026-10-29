@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>持衡 资产管理</title>
+<meta name="description" content="持衡：个人资产管理看板，含收支变化、资产配置、持仓明细与多币种换算（示例数据）。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%231F2A44'/%3E%3Cpath d='M16 7v17M10 24h12M8 11h16' stroke='%23F4E8B8' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="dc-root"></div>
+<script type="text/x-dc-template" id="dc-template">
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F8F3E9;font-family:'Noto Sans SC',system-ui,sans-serif;color:#1F2A44;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button,input,select{font-family:inherit}
+.app{--ink:#1F2A44;--mut:#55607A;--paper:#FFFDF8;--line:#E9DFC9;--navy:#1F2A44;--cream:#F8F3E9;--green:#4E7F63;--terra:#D4733F;
+  min-width:0;min-height:100%;background:var(--cream);color:var(--ink);padding:26px clamp(16px,3.4vw,52px) 56px;display:flex;flex-direction:column;gap:30px}
+.serif{font-family:'DM Serif Display','Noto Serif SC',serif}
+.num{font-variant-numeric:tabular-nums}
+.m{transition:filter .45s cubic-bezier(.3,.8,.2,1)}
+.hid .m,.hid .num{filter:blur(9px);user-select:none}
+
+/* motion: two identical sets alternate so a view change replays them */
+.stage{display:flex;flex-direction:column;gap:18px}
+.stage.a{--rise:riseA;--grow:growA;--reveal:revA;--fade:fadeA}
+.stage.b{--rise:riseB;--grow:growB;--reveal:revB;--fade:fadeB}
+@keyframes riseA{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes riseB{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes growA{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growB{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes revA{from{clip-path:inset(-10px 100% -10px -10px)}to{clip-path:inset(-10px -14px -10px -10px)}}
+@keyframes revB{from{clip-path:inset(-10px 100% -10px -10px)}to{clip-path:inset(-10px -14px -10px -10px)}}
+@keyframes fadeA{from{opacity:0}to{opacity:1}}
+@keyframes fadeB{from{opacity:0}to{opacity:1}}
+.stage .tile{animation:var(--rise) .75s cubic-bezier(.2,.8,.2,1) backwards}
+.row>.tile:nth-child(1),.row>.kgrid{animation-delay:.04s}
+.row>.tile:nth-child(2){animation-delay:.12s}
+.row>.tile:nth-child(3){animation-delay:.2s}
+.row>.tile:nth-child(4){animation-delay:.28s}
+.row>.tile:nth-child(5){animation-delay:.36s}
+.kgrid>.tile:nth-child(1){animation-delay:.1s}
+.kgrid>.tile:nth-child(2){animation-delay:.17s}
+.kgrid>.tile:nth-child(3){animation-delay:.24s}
+.kgrid>.tile:nth-child(4){animation-delay:.31s}
+.kpis>.tile:nth-child(1){animation-delay:.02s}
+.kpis>.tile:nth-child(2){animation-delay:.08s}
+.kpis>.tile:nth-child(3){animation-delay:.14s}
+.kpis>.tile:nth-child(4){animation-delay:.2s}
+.stage .mt{animation:var(--rise) .7s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(.25s + var(--d) * 70ms)}
+.stage .bar{transform-origin:bottom;animation:var(--grow) .9s cubic-bezier(.2,.9,.2,1) backwards;animation-delay:calc(.3s + var(--d) * 40ms)}
+.stage .draw{animation:var(--reveal) 1.5s cubic-bezier(.45,.05,.25,1) .25s backwards}
+.stage tbody tr{animation:var(--fade) .6s ease backwards}
+.stage tbody tr:nth-child(1){animation-delay:.4s}
+.stage tbody tr:nth-child(2){animation-delay:.45s}
+.stage tbody tr:nth-child(3){animation-delay:.5s}
+.stage tbody tr:nth-child(4){animation-delay:.55s}
+.stage tbody tr:nth-child(5){animation-delay:.6s}
+.stage tbody tr:nth-child(n+6){animation-delay:.65s}
+@media (prefers-reduced-motion:reduce){
+.stage .tile,.stage .mt,.stage .bar,.stage .draw,.stage tbody tr{animation:none}
+*{transition-duration:.01ms !important}
+}
+
+/* top bar */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:44px;height:44px;border-radius:50%;background:var(--navy);display:grid;place-items:center;flex:none}
+.brandname{font-family:'Noto Serif SC',serif;font-weight:700;font-size:24px;letter-spacing:.2em;line-height:1.1}
+.brandsub{font-size:12px;color:var(--mut);margin-top:3px;letter-spacing:.08em}
+.tabs{position:relative;display:grid;grid-template-columns:repeat(5,1fr);background:#EFE7D5;border-radius:99px;padding:5px;flex:1 1 420px;max-width:600px}
+.tabpill{position:absolute;top:5px;bottom:5px;left:5px;width:calc((100% - 10px) / 5);border-radius:99px;background:var(--navy);transform:translateX(calc(var(--i) * 100%));transition:transform .6s cubic-bezier(.3,.9,.2,1)}
+.tb{position:relative;z-index:1;min-height:44px;padding:0 6px;border:0;border-radius:99px;background:transparent;color:var(--mut);font:500 14px 'Noto Sans SC',sans-serif;cursor:pointer;transition:color .35s ease;white-space:nowrap}
+.tb:hover{color:var(--ink)}
+.tb[aria-current="page"],.tb[aria-current="page"]:hover{color:#F8F3E9}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #3D6FB8;outline-offset:2px}
+.tools{display:flex;gap:10px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--mut);min-width:0}
+.fld.grow{flex:1 1 180px}
+.sel{height:48px;border:1px solid #DDD2B9;border-radius:99px;background:var(--paper);padding:0 16px;font:500 14px 'Noto Sans SC',sans-serif;color:var(--ink);cursor:pointer;transition:border-color .25s ease}
+.sel:hover{border-color:#B9AD90}
+.inp{height:50px;border:1px solid #DDD2B9;border-radius:16px;background:#fff;padding:0 16px;font:500 16px 'Noto Sans SC',sans-serif;color:var(--ink);min-width:0;width:100%;transition:border-color .25s ease,box-shadow .25s ease}
+.inp:hover{border-color:#B9AD90}
+.inp:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(31,42,68,.12)}
+.inp:disabled{background:#F3EEE0;color:var(--mut)}
+.tog{min-height:48px;padding:0 18px;border-radius:99px;border:1px solid #DDD2B9;background:var(--paper);color:var(--mut);font:500 13.5px 'Noto Sans SC',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:9px;transition:background .3s ease,color .3s ease,border-color .3s ease,transform .3s ease;white-space:nowrap}
+.tog:hover{color:var(--ink);border-color:#B9AD90}
+.tog:active{transform:scale(.97)}
+.tog[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#F8F3E9}
+
+/* title */
+.titlebar{display:flex;flex-wrap:wrap;gap:16px 24px;justify-content:space-between;align-items:flex-end}
+.eyebrow{font-size:13px;letter-spacing:.18em;color:var(--mut);font-weight:500;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.eyebrow::before{content:'';width:28px;height:2px;background:var(--terra);border-radius:2px}
+.titlebar h1{margin:0;font-family:'Noto Serif SC',serif;font-size:60px;font-weight:700;letter-spacing:.06em;line-height:1.1}
+.lede{margin:12px 0 0;font-size:15px;color:var(--mut)}
+.seg{position:relative;display:inline-grid;grid-template-columns:1fr 1fr;background:#EFE7D5;border-radius:99px;padding:4px}
+.segpill{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:99px;background:var(--navy);transform:translateX(var(--sx));transition:transform .55s cubic-bezier(.3,.9,.2,1)}
+.seg button{position:relative;z-index:1;min-height:42px;padding:0 20px;border:0;border-radius:99px;background:transparent;font:500 13.5px 'Noto Sans SC',sans-serif;color:var(--mut);cursor:pointer;transition:color .35s ease;white-space:nowrap}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"],.seg button[aria-pressed="true"]:hover{color:#F8F3E9}
+
+/* tiles */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:16px}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:stretch}
+.brk{flex:0 0 100%;height:0;margin-top:-16px}
+.w2{flex:2 1 480px;min-width:0}
+.w1{flex:1 1 330px;min-width:0}
+.wf{flex:1 1 100%;min-width:0}
+.tile{--mut:#4B5870;position:relative;background:var(--paper);border:1px solid var(--line);border-radius:28px;padding:28px 30px;transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s ease}
+.tile.paper{--mut:#5B6578;box-shadow:0 1px 0 rgba(31,42,68,.03),0 22px 40px -30px rgba(31,42,68,.3)}
+.sage{background:#D7E3CF;border-color:#D7E3CF}
+.blush{background:#F2D5CE;border-color:#F2D5CE}
+.butter{background:#F4E8B8;border-color:#F4E8B8}
+.sky{background:#D4E2EE;border-color:#D4E2EE}
+.apricot{background:#F6DEC4;border-color:#F6DEC4}
+.lilac{background:#E2D8EE;border-color:#E2D8EE}
+.kgrid{flex:2 1 360px;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:16px}
+.kt{padding:24px 24px;display:flex;flex-direction:column}
+.kt:hover{transform:translateY(-4px)}
+.ch{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;margin-bottom:18px}
+.ch h3{margin:0;font-size:18px;font-weight:700;letter-spacing:.04em;font-family:'Noto Serif SC',serif}
+.sub{color:var(--mut);font-size:12.5px}
+.kt .l,.kpis .l{font-size:13px;color:var(--mut);letter-spacing:.06em;font-weight:500}
+.kt .v,.kpis .v{font:400 34px/1.1 'DM Serif Display','Noto Serif SC',serif;margin:auto 0 10px;padding-top:14px;white-space:nowrap}
+.kt .v small,.kpis .v small{font-size:14px;margin-right:5px;color:var(--mut)}
+.d{display:inline-block;font-size:12.5px;font-weight:500;padding:3px 11px;border-radius:99px;background:rgba(31,42,68,.08)}
+.d.pos{color:#2F6A47}
+.d.neg{color:#A6491C}
+.kt .s,.kpis .s{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.55}
+.pos{color:#2F6A47}
+.neg{color:#A6491C}
+.flat{color:var(--mut)}
+
+/* hero */
+.hero{--mut:#AEB9CE;background:var(--navy);border-color:var(--navy);color:#F8F3E9;padding:34px 36px 28px;display:flex;flex-direction:column}
+.hero .hl{font-size:13px;letter-spacing:.2em;color:#F4E8B8;font-weight:500}
+.hero .hv{font:400 76px/1.04 'DM Serif Display','Noto Serif SC',serif;margin:14px 0 14px;word-break:break-all}
+.hero .hv small{font-size:28px;color:#AEB9CE;margin-right:8px}
+.hero .d{background:rgba(244,232,184,.14)}
+.hero .d.pos{color:#C9EAD5}
+.hero .d.neg{color:#FFD2B8}
+.hero .hs{font-size:13px;color:#AEB9CE;margin-left:10px}
+.hero .readout{margin:26px 0 16px;color:#AEB9CE}
+.hero .readout b{color:#F8F3E9}
+.hero .readout b.pos{color:#C9EAD5}
+.hero .readout b.neg{color:#FFD2B8}
+.hero .gl{border-top-color:rgba(255,255,255,.12)}
+.hero .gl span{color:#AEB9CE}
+.hero .nline{stroke:#F4E8B8}
+.hero .narea{fill:rgba(244,232,184,.22)}
+.hero .guide{background:rgba(255,255,255,.28)}
+.hero .cursor{background:var(--navy);border-color:#F4E8B8;box-shadow:0 0 0 6px rgba(244,232,184,.16)}
+.hero .pt i{background:rgba(244,232,184,.55)}
+.hero .xl span{color:#AEB9CE}
+
+.readout{display:flex;flex-wrap:wrap;gap:6px 24px;font-size:13px;margin:2px 0 18px;color:var(--mut)}
+.readout b{font-weight:500;color:var(--ink);font-size:14px}
+.plot{position:relative}
+.gl{position:absolute;left:0;right:0;border-top:1px dashed #E6DBC3;height:0;z-index:0}
+.gl span{position:absolute;left:-58px;top:-9px;width:50px;text-align:right;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nbox{padding-left:58px}
+.nwplot{aspect-ratio:600/220;width:100%}
+.layer{position:absolute;left:0;top:0;width:100%;height:100%}
+.areamask{-webkit-mask-image:linear-gradient(to bottom,#000 5%,transparent 96%);mask-image:linear-gradient(to bottom,#000 5%,transparent 96%);z-index:1}
+.linelayer{z-index:2}
+.nsvg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
+.nline{fill:none;stroke:#1F2A44;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.narea{fill:rgba(31,42,68,.12);stroke:none}
+.guide{position:absolute;top:0;bottom:0;width:1px;margin-left:-.5px;background:#CFC3A8;z-index:3;transition:left .55s cubic-bezier(.3,.9,.2,1);pointer-events:none}
+.cursor{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--paper);border:3px solid var(--navy);z-index:4;pointer-events:none;transition:left .55s cubic-bezier(.3,.9,.2,1),top .55s cubic-bezier(.3,.9,.2,1)}
+.pt{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border:0;background:transparent;padding:0;cursor:pointer;border-radius:50%;z-index:5}
+.pt i{display:block;width:5px;height:5px;margin:auto;border-radius:50%;background:rgba(31,42,68,.4);transition:transform .3s ease}
+.pt:hover i{transform:scale(1.8)}
+.xl{position:relative;height:24px;margin-top:10px}
+.xl span{position:absolute;transform:translateX(-50%);font-size:11.5px;color:var(--mut);white-space:nowrap}
+.scroll{overflow-x:auto}
+.barscroll{overflow-x:auto;padding-top:10px}
+.barwrap{min-width:440px}
+.bars{position:absolute;left:0;right:0;top:0;display:flex;gap:4px;z-index:1}
+.barcol{flex:1 1 0;min-width:0;border:0;background:transparent;padding:0;display:flex;flex-direction:column;cursor:pointer;border-radius:99px;transition:background .35s ease}
+.barcol:hover,.barcol.on{background:#F6EFDD}
+.pair{height:180px;display:flex;align-items:flex-end;justify-content:center;gap:4px;padding-bottom:6px}
+.bar{width:34%;max-width:13px;min-height:6px;border-radius:99px;transition:height .8s cubic-bezier(.2,.9,.2,1),opacity .3s ease}
+.bar.i{background:var(--green)}
+.bar.o{background:var(--terra)}
+.bars:hover .barcol:not(:hover) .bar{opacity:.45}
+.ml{height:24px;line-height:24px;font-size:11.5px;color:var(--mut)}
+.barcol.on .ml{color:var(--ink);font-weight:700}
+.key{display:flex;gap:16px;font-size:12.5px;color:var(--mut);flex-wrap:wrap}
+.key i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+.cat{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.cat:last-child{margin-bottom:0}
+.cat .t{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--ink)}
+.cat .t span:last-child{font-variant-numeric:tabular-nums;color:var(--mut)}
+.track{position:relative;height:10px;border-radius:99px;background:rgba(31,42,68,.09)}
+.fill{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.9,.2,1)}
+.tick{position:absolute;top:-5px;bottom:-5px;width:3px;margin-left:-1px;background:var(--ink);border-radius:2px;transition:left .6s ease}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;font-weight:500;color:var(--mut);font-size:12px;padding:0 12px 12px;border-bottom:1px solid var(--line);white-space:nowrap;letter-spacing:.05em}
+.tbl td{padding:15px 12px;border-bottom:1px solid #F1E9D6;vertical-align:middle;color:var(--ink);transition:background .3s ease}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:#FBF6EA}
+.r{text-align:right}
+.tbl th.r{text-align:right}
+.nm2{font-weight:500}
+.cd{font-size:12px;color:var(--mut)}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:3px 12px;border-radius:99px;background:#F1EAD8;font-size:12px;color:#4A5468;white-space:nowrap}
+.dotc{width:9px;height:9px;border-radius:50%;flex:none}
+.fchips{display:flex;flex-wrap:wrap;gap:8px}
+.fchip{min-height:38px;padding:0 16px;border-radius:99px;border:1px solid #DDD2B9;background:var(--paper);font:500 13px 'Noto Sans SC',sans-serif;color:var(--mut);cursor:pointer;transition:background .3s ease,color .3s ease,border-color .3s ease,transform .25s ease}
+.fchip:hover{color:var(--ink);border-color:#B9AD90}
+.fchip:active{transform:scale(.96)}
+.fchip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#F8F3E9}
+
+/* allocation mosaic */
+.focusline{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0 0 16px;font-size:13px;color:var(--mut)}
+.focusline b{font:400 26px/1.2 'DM Serif Display','Noto Serif SC',serif;color:var(--ink);font-weight:400}
+.focusline .fn{font-weight:500;color:var(--ink);font-size:14px}
+.mosaic{display:flex;flex-wrap:wrap;gap:10px}
+.mt{border:0;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;min-height:104px;min-width:0;cursor:pointer;text-align:left;color:var(--ink);font-family:'Noto Sans SC',sans-serif;transition:transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s ease,box-shadow .4s ease}
+.mosaic.big .mt{min-height:150px}
+.mt:hover{transform:translateY(-3px)}
+.mt.dim{opacity:.38}
+.mt.on{box-shadow:0 0 0 2px var(--navy)}
+.mt .mn{font-size:13px;font-weight:500}
+.mt .mp{font:400 30px/1.1 'DM Serif Display',serif;margin-top:6px}
+.mt .mv{font-size:12px;color:#3C4760;margin-top:6px;font-variant-numeric:tabular-nums}
+
+.rb{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:18px 0;border-bottom:1px solid #F1E9D6}
+.rb:last-child{border-bottom:0}
+.rb .n{flex:0 0 130px;display:flex;align-items:center;gap:9px;font-weight:500;font-size:14px}
+.rb .tk{flex:1 1 180px;min-width:150px}
+.rb .p{flex:0 0 118px;font-size:12.5px;color:var(--mut);line-height:1.6;font-variant-numeric:tabular-nums}
+.rb .adv{flex:0 0 230px;font-size:13px;line-height:1.6}
+.st{display:inline-block;padding:2px 11px;border-radius:99px;font-size:12px;font-weight:500;margin-right:6px}
+.st.over{background:#F6DEC4;color:#8A3E14}
+.st.under{background:#D4E2EE;color:#24476B}
+.st.ok{background:#D7E3CF;color:#2A5A3A}
+.stack{display:flex;height:18px;border-radius:99px;overflow:hidden;gap:4px;margin:10px 0 14px}
+.stack div{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.9,.2,1)}
+.mini{font-size:13px;color:var(--mut);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.mini b{color:var(--ink);font-weight:500}
+.lia{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid rgba(31,42,68,.12);align-items:flex-start}
+.lia:last-child{border-bottom:0}
+.pnlr{display:flex;align-items:center;gap:14px;margin-bottom:15px;font-size:13.5px}
+.pnlr .nn{flex:0 0 130px;min-width:0}
+.pnlr .tt{flex:1;height:10px;border-radius:99px;background:rgba(31,42,68,.09);overflow:hidden}
+.pnlr .tt div{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.9,.2,1)}
+.pnlr .vv{flex:0 0 112px;text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.link{border:0;background:transparent;color:#2F5E9E;font:500 13px 'Noto Sans SC',sans-serif;cursor:pointer;min-height:36px;padding:0 10px;border-radius:99px;transition:background .3s ease,transform .3s ease}
+.link:hover{background:#E6EEF8;transform:translateX(3px)}
+.foot{font-size:12px;color:var(--mut);line-height:1.8;max-width:900px}
+
+/* currency */
+.cv{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.cv .fld.cur{flex:1 1 150px}
+.swap{width:50px;height:50px;border-radius:50%;border:1px solid #DDD2B9;background:var(--paper);color:var(--mut);cursor:pointer;display:grid;place-items:center;flex:none;transition:transform .55s cubic-bezier(.3,.9,.2,1),background .3s ease,color .3s ease}
+.swap:hover{background:var(--navy);color:#F8F3E9;transform:rotate(180deg)}
+.res{margin:22px 0 6px;padding:26px 28px;border-radius:24px;background:var(--navy);color:#F8F3E9}
+.res .rl{font-size:13px;color:#AEB9CE}
+.res .rv{font:400 54px/1.1 'DM Serif Display','Noto Serif SC',serif;margin:10px 0;word-break:break-all}
+.res .rs{font-size:12.5px;color:#AEB9CE}
+.rate-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(31,42,68,.12)}
+.rate-row:last-of-type{border-bottom:0}
+.rate-row .nm{flex:1;min-width:0;font-size:14px;font-weight:500}
+.rate-row .nm small{display:block;color:var(--mut);font-size:12px;font-weight:400}
+.rate-row .inp{width:128px;height:44px;text-align:right;font-variant-numeric:tabular-nums;border-radius:14px}
+.reset{margin-top:14px}
+@media (max-width:900px){
+.titlebar h1{font-size:44px}
+.hero .hv{font-size:56px}
+.res .rv{font-size:38px}
+.tb{font-size:13px}
+}
+@media (max-width:560px){
+.kgrid{grid-template-columns:minmax(0,1fr)}
+.tile{padding:22px 20px}
+.hero{padding:26px 22px 22px}
+.hero .hv{font-size:44px}
+.skipm{display:none}
+.tools{flex-wrap:wrap}
+}
+</style>
+</helmet>
+
+<div class="app {{appCls}}">
+
+<header class="top">
+<div class="brand">
+<div class="mark">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4E8B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16"/><path d="M6 20h12"/><path d="M4 8h16"/><path d="M4 8l-2.2 6a3.2 3.2 0 0 0 4.4 0z"/><path d="M20 8l-2.2 6a3.2 3.2 0 0 0 4.4 0z"/></svg>
+</div>
+<div>
+<div class="brandname">持衡</div>
+<div class="brandsub">个人资产管理</div>
+</div>
+</div>
+<nav class="tabs" aria-label="主导航" style="--i: {{navIdx}}">
+<div class="tabpill"></div>
+<button class="tb" aria-current="{{cur.ov}}" onClick="{{goOv}}">总览</button>
+<button class="tb" aria-current="{{cur.flow}}" onClick="{{goFlow}}">收支分析</button>
+<button class="tb" aria-current="{{cur.alloc}}" onClick="{{goAlloc}}">资产配置</button>
+<button class="tb" aria-current="{{cur.assets}}" onClick="{{goAssets}}">资产明细</button>
+<button class="tb" aria-current="{{cur.fx}}" onClick="{{goFx}}">货币换算</button>
+</nav>
+<div class="tools">
+<label class="fld">显示币种
+<select class="sel" value="{{disp}}" onChange="{{setDisp}}">
+<sc-for list="{{dispOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<button class="tog" aria-pressed="{{hide}}" onClick="{{toggleHide}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+{{hideLabel}}
+</button>
+</div>
+</header>
+
+<main style="display:flex;flex-direction:column;gap:30px">
+
+<div class="titlebar">
+<div>
+<div class="eyebrow">2026 年 10 月 29 日 · 周四</div>
+<h1>{{title}}</h1>
+<p class="lede">{{lede}}</p>
+</div>
+<sc-if value="{{showRange}}" hint-placeholder-val="{{ true }}">
+<div class="seg" role="group" aria-label="统计区间" style="--sx: {{segX}}">
+<div class="segpill"></div>
+<button aria-pressed="{{r6}}" onClick="{{setR6}}">近 6 个月</button>
+<button aria-pressed="{{r12}}" onClick="{{setR12}}">近 12 个月</button>
+</div>
+</sc-if>
+</div>
+
+<div class="stage {{stageCls}}">
+
+<sc-if value="{{showKpis}}" hint-placeholder-val="{{ false }}">
+<div class="kpis">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div class="{{k.cls}}">
+<div class="l">{{k.label}}</div>
+<div class="v m"><small>{{k.cur}}</small>{{k.num}}</div>
+<div>
+<sc-if value="{{k.hasDelta}}" hint-placeholder-val="{{ false }}">
+<span class="d m {{k.tone}}">{{k.delta}}</span>
+</sc-if>
+</div>
+<div class="s m">{{k.sub}}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<div class="row">
+
+<sc-if value="{{showHero}}" hint-placeholder-val="{{ true }}">
+<section class="tile hero w2" aria-label="净资产">
+<div class="hl">净资产</div>
+<div class="hv m"><small>{{heroCur}}</small>{{heroNum}}</div>
+<div><span class="d m {{heroTone}}">{{heroDelta}}</span><span class="hs m">{{heroSub}}</span></div>
+<div class="readout"><span>{{hnMonth}}</span><span>净资产 <b class="num m">{{hnValue}}</b></span><span>较上月 <b class="num m {{hnTone}}">{{hnDelta}}</b></span></div>
+<div class="nbox">
+<div class="plot nwplot">
+<sc-for list="{{nwTicks}}" as="t" hint-placeholder-count="4">
+<div class="gl" style="top: {{t.y}}%"><span class="m">{{t.label}}</span></div>
+</sc-for>
+<div class="layer areamask"><div class="layer draw"><svg class="nsvg" viewBox="0 0 600 220" role="img" aria-label="净资产面积图"><path class="narea" d="{{nwArea}}"/></svg></div></div>
+<div class="layer linelayer"><div class="layer draw"><svg class="nsvg" viewBox="0 0 600 220" role="img" aria-label="净资产曲线"><path class="nline" d="{{nwLine}}"/></svg></div></div>
+<div class="guide" style="left: {{curLeft}}%"></div>
+<div class="cursor" style="left: {{curLeft}}%; top: {{curTop}}%"></div>
+<sc-for list="{{nwPts}}" as="p" hint-placeholder-count="12">
+<button class="pt" style="left: {{p.left}}%; top: {{p.top}}%" aria-label="{{p.aria}}" onMouseEnter="{{p.enter}}" onFocus="{{p.enter}}" onClick="{{p.enter}}"><i></i></button>
+</sc-for>
+</div>
+<div class="xl">
+<sc-for list="{{nwX}}" as="x" hint-placeholder-count="12">
+<span class="{{x.cls}}" style="left: {{x.left}}%">{{x.text}}</span>
+</sc-for>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showKgrid}}" hint-placeholder-val="{{ true }}">
+<div class="kgrid">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div class="{{k.cls}}">
+<div class="l">{{k.label}}</div>
+<div class="v m"><small>{{k.cur}}</small>{{k.num}}</div>
+<div class="s m">{{k.sub}}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{showBrkTop}}" hint-placeholder-val="{{ true }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showBars}}" hint-placeholder-val="{{ true }}">
+<section class="tile paper w2" aria-label="月度收支">
+<div class="ch">
+<h3>收支变化</h3>
+<div class="key"><span><i style="background:#4E7F63"></i>收入</span><span><i style="background:#D4733F"></i>支出</span></div>
+</div>
+<div class="readout"><span>{{hfMonth}}</span><span>收入 <b class="num m">{{hfInc}}</b></span><span>支出 <b class="num m">{{hfExp}}</b></span><span>结余 <b class="num m {{hfTone}}">{{hfNet}}</b></span></div>
+<div class="barscroll">
+<div class="barwrap nbox">
+<div class="plot" style="height: 204px">
+<div style="position:absolute;left:0;right:0;top:0;height:180px">
+<sc-for list="{{flowTicks}}" as="t" hint-placeholder-count="5">
+<div class="gl" style="top: {{t.y}}%"><span class="m">{{t.label}}</span></div>
+</sc-for>
+</div>
+<div class="bars" style="height: 204px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="12">
+<button class="{{b.cls}}" aria-label="{{b.aria}}" onMouseEnter="{{b.enter}}" onFocus="{{b.enter}}" onClick="{{b.enter}}">
+<div class="pair" style="--d: {{b.i}}"><div class="bar i" style="height: {{b.hi}}%"></div><div class="bar o" style="height: {{b.he}}%"></div></div>
+<div class="ml">{{b.label}}</div>
+</button>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showMosaic}}" hint-placeholder-val="{{ true }}">
+<section class="tile paper {{mosaicWidth}}" aria-label="资产配置">
+<div class="ch">
+<h3>资产配置</h3>
+<span class="sub">点击色块可聚焦</span>
+</div>
+<div class="focusline"><span class="fn">{{dLabel}}</span><b class="m">{{dValue}}</b><span>{{dSub}}</span></div>
+<div class="mosaic {{mosaicCls}}">
+<sc-for list="{{legend}}" as="c" hint-placeholder-count="6">
+<button class="{{c.cls}}" style="flex: {{c.grow}} 1 {{c.basis}}px; background: {{c.bg}}; --d: {{c.i}}" aria-pressed="{{c.on}}" onClick="{{c.pick}}">
+<span class="mn">{{c.name}}</span>
+<span><span class="mp">{{c.pctText}}</span><br><span class="mv m">{{c.valueText}}</span></span>
+</button>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkMid}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showCats}}" hint-placeholder-val="{{ true }}">
+<section class="tile apricot w1" aria-label="支出结构">
+<div class="ch">
+<h3>支出结构</h3>
+<span class="sub">{{catSub}}</span>
+</div>
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="6">
+<div class="cat">
+<div class="t"><span>{{c.name}}</span><span class="m">{{c.amount}} · {{c.share}}</span></div>
+<div class="track"><div class="fill" style="width: {{c.w}}%; background: #D4733F"></div></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkCats}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showInc}}" hint-placeholder-val="{{ false }}">
+<section class="tile sage w1" aria-label="收入来源">
+<div class="ch">
+<h3>收入来源</h3>
+<span class="sub">{{incSub}}</span>
+</div>
+<sc-for list="{{incs}}" as="c" hint-placeholder-count="5">
+<div class="cat">
+<div class="t"><span>{{c.name}}</span><span class="m">{{c.amount}} · {{c.share}}</span></div>
+<div class="track"><div class="fill" style="width: {{c.w}}%; background: #4E7F63"></div></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showTx}}" hint-placeholder-val="{{ true }}">
+<section class="tile paper {{txCls}}" aria-label="收支流水">
+<div class="ch">
+<h3>{{txTitle}}</h3>
+<sc-if value="{{showTxFilter}}" hint-placeholder-val="{{ false }}">
+<div class="fchips" role="group" aria-label="流水类型">
+<sc-for list="{{txFilters}}" as="f" hint-placeholder-count="3">
+<button class="fchip" aria-pressed="{{f.on}}" onClick="{{f.pick}}">{{f.label}} {{f.count}}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{showTxAll}}" hint-placeholder-val="{{ true }}">
+<button class="link" onClick="{{goFlow}}">查看全部 →</button>
+</sc-if>
+</div>
+<div class="scroll">
+<table class="tbl" style="min-width: 560px">
+<thead><tr><th>日期</th><th>摘要</th><th>类别</th><th>账户</th><th class="r">金额</th></tr></thead>
+<tbody>
+<sc-for list="{{txs}}" as="t" hint-placeholder-count="6">
+<tr>
+<td class="num cd">{{t.date}}</td>
+<td class="nm2">{{t.desc}}</td>
+<td><span class="chip">{{t.cat}}</span></td>
+<td class="cd">{{t.acct}}</td>
+<td class="r num m nm2 {{t.tone}}">{{t.amount}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showRebal}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper w2" aria-label="目标偏离与再平衡">
+<div class="ch">
+<h3>目标偏离与再平衡</h3>
+<span class="sub">黑色竖线为目标比例 · 偏离超过 2 个百分点提示调整</span>
+</div>
+<sc-for list="{{rebal}}" as="r" hint-placeholder-count="6">
+<div class="rb">
+<div class="n"><span class="dotc" style="background: {{r.color}}"></span>{{r.name}}</div>
+<div class="tk"><div class="track"><div class="fill" style="width: {{r.w}}%; background: {{r.color}}"></div><div class="tick" style="left: {{r.tickLeft}}%"></div></div></div>
+<div class="p">实际 {{r.actual}}<br>目标 {{r.target}}</div>
+<div class="adv"><span class="st {{r.stCls}}">{{r.stText}}</span><span class="m">{{r.advice}}</span></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkRebal}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showRisk}}" hint-placeholder-val="{{ false }}">
+<section class="tile lilac wf" aria-label="风险结构">
+<div class="ch">
+<h3>风险结构</h3>
+<span class="sub">个股、基金与加密资产归为进取型；现金、债券、黄金归为防御型</span>
+</div>
+<div class="stack" role="img" aria-label="进取型与防御型占比">
+<div style="width: {{riskW}}%; background: #D4733F"></div>
+<div style="width: {{defW}}%; background: #1F2A44"></div>
+</div>
+<div class="mini"><span><b class="num">进取型 {{riskText}}</b>　<span class="m">{{riskAmt}}</span></span><span><b class="num">防御型 {{defText}}</b>　<span class="m">{{defAmt}}</span></span></div>
+</section>
+</sc-if>
+
+<sc-if value="{{showHold}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper wf" aria-label="持仓明细">
+<div class="ch">
+<h3>持仓与账户</h3>
+<div class="fchips" role="group" aria-label="按类别筛选">
+<sc-for list="{{holdFilters}}" as="f" hint-placeholder-count="7">
+<button class="fchip" aria-pressed="{{f.on}}" onClick="{{f.pick}}">{{f.label}} {{f.count}}</button>
+</sc-for>
+</div>
+</div>
+<div class="scroll">
+<table class="tbl" style="min-width: 720px">
+<thead><tr><th>名称</th><th>类别</th><th class="r">市值</th><th class="r">成本</th><th class="r">浮动盈亏</th><th class="r">收益率</th><th>占总资产</th></tr></thead>
+<tbody>
+<sc-for list="{{holds}}" as="h" hint-placeholder-count="8">
+<tr>
+<td><div class="nm2">{{h.name}}</div><div class="cd">{{h.code}}</div></td>
+<td><span class="chip"><span class="dotc" style="background: {{h.color}}"></span>{{h.clsName}}</span></td>
+<td class="r num m nm2">{{h.value}}</td>
+<td class="r num m cd">{{h.cost}}</td>
+<td class="r num m nm2 {{h.tone}}">{{h.pnl}}</td>
+<td class="r num nm2 {{h.tone}}">{{h.pnlPct}}</td>
+<td style="min-width:130px"><div style="display:flex;align-items:center;gap:10px"><div class="track" style="flex:1"><div class="fill" style="width: {{h.bar}}%; background: {{h.color}}"></div></div><span class="num cd" style="width:44px;text-align:right">{{h.weight}}</span></div></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkHold}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showPnl}}" hint-placeholder-val="{{ false }}">
+<section class="tile butter w2" aria-label="盈亏贡献">
+<div class="ch">
+<h3>盈亏贡献</h3>
+<span class="sub">各持仓浮动盈亏，自高到低</span>
+</div>
+<sc-for list="{{pnls}}" as="p" hint-placeholder-count="8">
+<div class="pnlr">
+<div class="nn">{{p.name}}</div>
+<div class="tt"><div style="width: {{p.w}}%; background: {{p.color}}"></div></div>
+<div class="vv m {{p.tone}}">{{p.text}}</div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showLiab}}" hint-placeholder-val="{{ false }}">
+<section class="tile blush w1" aria-label="负债">
+<div class="ch">
+<h3>负债</h3>
+<span class="sub">负债率 {{liabRate}}</span>
+</div>
+<sc-for list="{{liabs}}" as="l" hint-placeholder-count="2">
+<div class="lia">
+<div><div class="nm2">{{l.name}}</div><div class="cd">{{l.note}}</div></div>
+<div class="num m nm2">{{l.balance}}</div>
+</div>
+</sc-for>
+<div class="lia" style="border-bottom:0;padding-bottom:0">
+<div class="nm2">负债合计</div>
+<div class="num m nm2 neg">{{liabTotal}}</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showFx}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper w2" aria-label="货币换算器">
+<div class="ch">
+<h3>货币换算器</h3>
+<span class="sub">主流货币互换</span>
+</div>
+<div class="cv">
+<label class="fld grow">金额
+<input class="inp num" inputmode="decimal" value="{{cvAmt}}" onChange="{{setAmt}}">
+</label>
+<label class="fld cur">从
+<select class="sel" value="{{cvFrom}}" onChange="{{setFrom}}">
+<sc-for list="{{fxOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<button class="swap" aria-label="互换两种货币" onClick="{{swapFx}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4L3 8l4 4"/><path d="M3 8h15"/><path d="M17 20l4-4-4-4"/><path d="M21 16H6"/></svg>
+</button>
+<label class="fld cur">换成
+<select class="sel" value="{{cvTo}}" onChange="{{setTo}}">
+<sc-for list="{{fxOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+</div>
+<div class="res">
+<div class="rl">{{resLabel}}</div>
+<div class="rv">{{resValue}}</div>
+<div class="rs">{{resRate}}</div>
+</div>
+<div class="ch" style="margin:24px 0 6px"><h3>同一金额换成各币种</h3><span class="sub">{{quickSub}}</span></div>
+<div class="scroll">
+<table class="tbl" style="min-width: 420px">
+<thead><tr><th>币种</th><th class="r">金额</th><th class="r">汇率（1 {{cvFrom}} =）</th></tr></thead>
+<tbody>
+<sc-for list="{{quick}}" as="q" hint-placeholder-count="8">
+<tr>
+<td><span class="nm2">{{q.name}}</span> <span class="cd">{{q.code}}</span></td>
+<td class="r num nm2">{{q.value}}</td>
+<td class="r num cd">{{q.rate}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showFx}}" hint-placeholder-val="{{ false }}">
+<section class="tile sage w1" aria-label="汇率设置">
+<div class="ch">
+<h3>汇率设置</h3>
+<span class="sub">1 美元 =</span>
+</div>
+<p class="sub" style="margin:0 0 8px;line-height:1.7">以下为示例参考汇率，并非实时行情。可直接修改数值，换算器和全站金额会随之更新。</p>
+<sc-for list="{{rateRows}}" as="r" hint-placeholder-count="8">
+<div class="rate-row">
+<div class="nm">{{r.name}}<small>{{r.code}}</small></div>
+<input class="inp num" inputmode="decimal" aria-label="{{r.aria}}" value="{{r.val}}" disabled="{{r.fixed}}" onChange="{{r.edit}}">
+</div>
+</sc-for>
+<button class="fchip reset" onClick="{{resetRates}}">恢复示例汇率</button>
+</section>
+</sc-if>
+
+</div>
+</div>
+
+<div class="foot">数据截至 2026 年 10 月 29 日 · 示例数据，仅用于演示；汇率为示例参考值，非实时行情。收益率 = 浮动盈亏 ÷ 成本；储蓄率 = 结余 ÷ 收入；应急储备 = 现金与存款 ÷ 区间月均支出。账目以新台币记录，切换显示币种时按设置的汇率换算。</div>
+</main>
+</div>
+</script>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() { this.kick(); }
+  componentWillUnmount() { if (this._raf) cancelAnimationFrame(this._raf); }
+
+  // eases 0→1 so headline numbers count up on every view / range change
+  kick() {
+    if (this._raf) cancelAnimationFrame(this._raf);
+    const t0 = performance.now(), dur = 1200;
+    this.setState({ t: 0 });
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      this.setState({ t: 1 - Math.pow(1 - p, 4) });
+      if (p < 1) { this._raf = requestAnimationFrame(step); } else { this._raf = null; }
+    };
+    this._raf = requestAnimationFrame(step);
+  }
+
+  getData() {
+    return {
+      currencies: [
+        { code: 'TWD', name: '新台币', sym: 'NT$', perUSD: 31.5 },
+        { code: 'CNY', name: '人民币', sym: 'CN¥', perUSD: 7.1 },
+        { code: 'HKD', name: '港币',   sym: 'HK$', perUSD: 7.8 },
+        { code: 'USD', name: '美元',   sym: '$',   perUSD: 1 },
+        { code: 'EUR', name: '欧元',   sym: '€',   perUSD: 0.86 },
+        { code: 'JPY', name: '日元',   sym: 'JP¥', perUSD: 150 },
+        { code: 'GBP', name: '英镑',   sym: '£',   perUSD: 0.75 },
+        { code: 'AUD', name: '澳元',   sym: 'A$',  perUSD: 1.52 }
+      ],
+      monthsShort: ['11月','12月','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月'],
+      monthsFull: ['2025年11月','2025年12月','2026年1月','2026年2月','2026年3月','2026年4月','2026年5月','2026年6月','2026年7月','2026年8月','2026年9月','2026年10月'],
+      income:  [68000,66500,92000,66500,67200,66500,71800,66500,68900,66500,74200,66500],
+      expense: [47200,52800,61300,43900,45600,49800,58200,46300,51700,44800,53900,47600],
+      nw: [2398000,2421000,2438000,2473000,2491000,2512000,2547000,2536000,2571000,2618000,2649000,0],
+      nw0: 2380000,
+      classes: [
+        { id: 'cash',  name: '现金与存款', color: '#5B84B1', bg: '#C3D5E8', target: 20 },
+        { id: 'stock', name: '个股',       color: '#5C9A63', bg: '#C4DBBD', target: 22 },
+        { id: 'fund',  name: '基金与 ETF', color: '#E08A45', bg: '#F5CBA1', target: 30 },
+        { id: 'bond',  name: '债券',       color: '#9B7BC0', bg: '#D9CBE8', target: 14 },
+        { id: 'gold',  name: '黄金',       color: '#C9A227', bg: '#EFDD8F', target: 8 },
+        { id: 'other', name: '加密资产',   color: '#CF7F73', bg: '#EDC3BC', target: 6 }
+      ],
+      risky: ['stock','fund','other'],
+      holdings: [
+        { name: '玉山银行 活期存款', code: '活期账户', cls: 'cash',  value: 186000, cost: 186000 },
+        { name: '台新银行 定期存款', code: '一年期 · 固定利率', cls: 'cash',  value: 320000, cost: 320000 },
+        { name: '货币市场基金', code: '随时赎回', cls: 'cash',  value: 94000,  cost: 94000 },
+        { name: '台积电', code: '2330', cls: 'stock', value: 520000, cost: 410000 },
+        { name: '联发科', code: '2454', cls: 'stock', value: 168000, cost: 190000 },
+        { name: '元大台湾50', code: '0050 · ETF', cls: 'fund',  value: 432000, cost: 350000 },
+        { name: '全球股票 ETF', code: 'VT · ETF', cls: 'fund',  value: 356000, cost: 310000 },
+        { name: '美国公债 ETF', code: '长天期国债', cls: 'bond',  value: 285000, cost: 301000 },
+        { name: '投资级公司债基金', code: '债券基金', cls: 'bond',  value: 140000, cost: 136000 },
+        { name: '黄金存折', code: '黄金 · 公克', cls: 'gold',  value: 240000, cost: 205000 },
+        { name: '比特币', code: 'BTC', cls: 'other', value: 128000, cost: 90000 },
+        { name: '以太币', code: 'ETH', cls: 'other', value: 36000,  cost: 44000 }
+      ],
+      liabs: [
+        { name: '助学贷款', note: '年利率 1.15% · 按月摊还', balance: 210000 },
+        { name: '信用卡待缴', note: '下期账单日 11 月 5 日', balance: 18600 }
+      ],
+      expCats: [
+        { name: '餐饮', share: 28 }, { name: '住房', share: 24 }, { name: '学习', share: 11 },
+        { name: '购物', share: 10 }, { name: '交通', share: 9 }, { name: '娱乐', share: 7 },
+        { name: '医疗', share: 4 }, { name: '其他', share: 7 }
+      ],
+      incSrc: [
+        { name: '助教薪资', share: 33.5 }, { name: '奖学金', share: 30.1 }, { name: '科研补助', share: 18.0 },
+        { name: '家教兼职', share: 12.0 }, { name: '投资收益', share: 6.4 }
+      ],
+      txs: [
+        { date: '10/28', desc: '午餐 · 学校餐厅', cat: '餐饮', acct: '悠游卡', amt: -120 },
+        { date: '10/27', desc: '捷运月票', cat: '交通', acct: '玉山活期', amt: -1280 },
+        { date: '10/25', desc: '影音订阅', cat: '娱乐', acct: '信用卡', amt: -390 },
+        { date: '10/24', desc: '科研补助入账', cat: '科研补助', acct: '玉山活期', amt: 12000 },
+        { date: '10/22', desc: '超市采买', cat: '餐饮', acct: '信用卡', amt: -1860 },
+        { date: '10/20', desc: '专业书籍', cat: '学习', acct: '信用卡', amt: -1450 },
+        { date: '10/19', desc: '咖啡', cat: '餐饮', acct: '悠游卡', amt: -160 },
+        { date: '10/18', desc: '家教课酬', cat: '家教兼职', acct: '玉山活期', amt: 8000 },
+        { date: '10/15', desc: '房租', cat: '住房', acct: '玉山活期', amt: -12500 },
+        { date: '10/14', desc: '同学聚餐', cat: '餐饮', acct: '信用卡', amt: -980 },
+        { date: '10/12', desc: '门诊挂号', cat: '医疗', acct: '信用卡', amt: -350 },
+        { date: '10/10', desc: '台积电现金股息', cat: '投资收益', acct: '券商账户', amt: 4200 },
+        { date: '10/08', desc: '运动鞋', cat: '购物', acct: '信用卡', amt: -2680 },
+        { date: '10/05', desc: '奖学金入账', cat: '奖学金', acct: '玉山活期', amt: 20000 },
+        { date: '10/03', desc: '水电瓦斯', cat: '住房', acct: '玉山活期', amt: -1750 },
+        { date: '10/02', desc: '手机月租', cat: '其他', acct: '信用卡', amt: -599 },
+        { date: '10/01', desc: '助教薪资', cat: '助教薪资', acct: '玉山活期', amt: 22300 }
+      ]
+    };
+  }
+
+  renderVals() {
+    const D = this.getData();
+    const s = Object.assign({ view: 'ov', range: 12, tx: 'all', cls: 'all', focus: 'all', hide: false, hf: null, hn: null, nav: 0, t: 1,
+      disp: 'TWD', rates: {}, cvAmt: '1000', cvFrom: 'USD', cvTo: 'TWD' }, this.state || {});
+    const set = (o) => () => this.setState(o);
+    const go = (o) => () => { this.setState(Object.assign({ nav: s.nav + 1, hf: null, hn: null }, o)); this.kick(); };
+    const sum = (a) => a.reduce((x, y) => x + y, 0);
+    const T = s.t;
+
+    // ---- currencies: amounts are stored in TWD and shown in the chosen currency
+    const byCode = {};
+    D.currencies.forEach((c) => { byCode[c.code] = c; });
+    const perUSD = (code) => {
+      const v = parseFloat(s.rates[code]);
+      return v > 0 ? v : byCode[code].perUSD;
+    };
+    const disp = byCode[s.disp] ? s.disp : 'TWD';
+    const sym = byCode[disp].sym;
+    const fx = perUSD(disp) / perUSD('TWD');
+    const cv = (n) => n * fx;
+    const decFor = (code, a) => (code === 'JPY' || code === 'TWD') ? 0 : (a < 1000 ? 2 : 0);
+    const numC = (x, code) => { const d = decFor(code, Math.abs(x)); return x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+    const num = (twd) => numC(cv(twd), disp);
+    const fmt = (twd) => sym + num(twd);
+    const sgn = (twd) => (twd < 0 ? '−' : '+') + sym + num(Math.abs(twd));
+    const wan = (twd) => { const v = cv(twd) / 10000; return (v >= 100 ? String(Math.round(v)) : String(+v.toFixed(1))) + '万'; };
+    const pc = (n, d) => n.toFixed(d === undefined ? 1 : d) + '%';
+    const spc = (n) => (n < 0 ? '−' : '+') + Math.abs(n).toFixed(1) + '%';
+    const tone = (n) => n > 0 ? 'pos' : (n < 0 ? 'neg' : 'flat');
+    const view = s.view;
+    const n = s.range;
+    const lo = 12 - n;
+
+    // ---- period figures
+    const mon = D.monthsShort.slice(lo), monF = D.monthsFull.slice(lo);
+    const inc = D.income.slice(lo), exp = D.expense.slice(lo);
+    const tInc = sum(inc), tExp = sum(exp), tNet = tInc - tExp, rate = tNet / tInc * 100;
+    const avgExp = tExp / n;
+
+    // ---- holdings & classes
+    const H = D.holdings.map((h) => Object.assign({}, h, { pnl: h.value - h.cost }));
+    const assets = sum(H.map((h) => h.value));
+    const costAll = sum(H.map((h) => h.cost));
+    const liab = sum(D.liabs.map((l) => l.balance));
+    const nwNow = assets - liab;
+    const clsById = {};
+    const C = D.classes.map((c) => {
+      const list = H.filter((h) => h.cls === c.id);
+      const value = sum(list.map((h) => h.value));
+      const actual = value / assets * 100;
+      const drift = actual - c.target;
+      const amt = (c.target - actual) / 100 * assets;
+      const o = Object.assign({}, c, { value, actual, drift, amt, count: list.length });
+      clsById[c.id] = o;
+      return o;
+    });
+    const cashValue = clsById.cash.value;
+    const reserve = cashValue / avgExp;
+    const riskVal = sum(C.filter((c) => D.risky.indexOf(c.id) >= 0).map((c) => c.value));
+    const defVal = assets - riskVal;
+    const needAdjust = C.filter((c) => Math.abs(c.drift) >= 2).length;
+
+    // ---- net worth series
+    const nwAll = D.nw.slice(); nwAll[11] = nwNow;
+    const nws = nwAll.slice(lo);
+    const base = n === 12 ? D.nw0 : nwAll[lo - 1];
+    const dNw = nwNow - base;
+
+    // ---- navigation
+    const cur2 = {};
+    ['ov', 'flow', 'alloc', 'assets', 'fx'].forEach((k2) => { cur2[k2] = view === k2 ? 'page' : 'false'; });
+    const titles = {
+      ov: ['总览', '资产、收支与配置的整体概况'],
+      flow: ['收支分析', '看清钱从哪里来、花到哪里去'],
+      alloc: ['资产配置', '当前配置与目标比例的偏离，以及再平衡建议'],
+      assets: ['资产明细', '每一笔持仓与账户的市值、成本与盈亏'],
+      fx: ['货币换算', '主流货币互换，并设置全站的显示币种']
+    };
+
+    // ---- KPIs (numbers count up with T)
+    const tints = ['sage', 'blush', 'butter', 'sky'];
+    const k = (i, label, cu, nm, delta, dtone, sub) => ({ label, cur: cu, num: nm, hasDelta: !!delta, delta, tone: dtone, sub, cls: 'tile kt ' + tints[i % 4] });
+    let kpis = [];
+    if (view === 'ov') {
+      kpis = [
+        k(0, '总资产', sym, num(assets * T), '', '', '共 ' + H.length + ' 项持仓与账户'),
+        k(1, '负债', sym, num(liab * T), '', '', '负债率 ' + pc(liab / assets * 100)),
+        k(2, '本月结余', sym, num((D.income[11] - D.expense[11]) * T), '', '', '收入 ' + fmt(D.income[11]) + ' · 支出 ' + fmt(D.expense[11])),
+        k(3, '储蓄率', '', (rate * T).toFixed(1) + '%', '', '', '近 ' + n + ' 个月累计结余 ' + fmt(tNet))
+      ];
+    } else if (view === 'flow') {
+      kpis = [
+        k(0, '区间收入', sym, num(tInc * T), '', '', '月均 ' + fmt(tInc / n)),
+        k(1, '区间支出', sym, num(tExp * T), '', '', '月均 ' + fmt(avgExp)),
+        k(2, '区间结余', sym, num(tNet * T), '', '', '储蓄率 ' + pc(rate)),
+        k(3, '应急储备', '', (reserve * T).toFixed(1) + ' 个月', '', '', '现金与存款 ÷ 月均支出')
+      ];
+    } else if (view === 'alloc') {
+      kpis = [
+        k(0, '进取型资产', '', (riskVal / assets * 100 * T).toFixed(1) + '%', '', '', fmt(riskVal)),
+        k(3, '防御型资产', '', (defVal / assets * 100 * T).toFixed(1) + '%', '', '', fmt(defVal)),
+        k(2, '应急储备', '', (reserve * T).toFixed(1) + ' 个月', '', '', '现金与存款 ' + fmt(cashValue)),
+        k(1, '待调整类别', '', Math.round(needAdjust * T) + ' 项', '', '', '偏离目标 2 个百分点以上')
+      ];
+    } else if (view === 'assets') {
+      const pnlAll = assets - costAll;
+      kpis = [
+        k(3, '总市值', sym, num(assets * T), '', '', H.length + ' 项持仓与账户'),
+        k(2, '总成本', sym, num(costAll * T), '', '', '含现金类本金'),
+        k(0, '浮动盈亏', sym, num(pnlAll * T), (pnlAll >= 0 ? '▲ 高于成本' : '▼ 低于成本'), tone(pnlAll), '持仓整体' + (pnlAll >= 0 ? '盈利' : '亏损')),
+        k(1, '综合收益率', '', (pnlAll / costAll * 100 * T).toFixed(1) + '%', '', '', '浮动盈亏 ÷ 总成本')
+      ];
+    }
+
+    // ---- net worth chart
+    const W = 600, HH = 220, pt = 20, pb = 20;
+    const mn = Math.min.apply(null, nws), mx = Math.max.apply(null, nws);
+    const padv = (mx - mn) * 0.14 || 1;
+    const lo2 = mn - padv, hi2 = mx + padv;
+    const px = (i) => 12 + (n === 1 ? 0 : i / (n - 1)) * (W - 24);
+    const py = (v) => pt + (1 - (v - lo2) / (hi2 - lo2)) * (HH - pt - pb);
+    let line = '';
+    nws.forEach((v, i) => {
+      const x = px(i), y = py(v);
+      if (i === 0) { line = 'M' + x.toFixed(1) + ' ' + y.toFixed(1); }
+      else {
+        const x0 = px(i - 1), y0 = py(nws[i - 1]), cx = (x0 + x) / 2;
+        line += ' C' + cx.toFixed(1) + ' ' + y0.toFixed(1) + ',' + cx.toFixed(1) + ' ' + y.toFixed(1) + ',' + x.toFixed(1) + ' ' + y.toFixed(1);
+      }
+    });
+    const area = line + ' L' + px(n - 1).toFixed(1) + ' ' + HH + ' L' + px(0).toFixed(1) + ' ' + HH + ' Z';
+    const nwTicks = [0, 1, 2, 3].map((q) => { const v = lo2 + (hi2 - lo2) * q / 3; return { y: py(v) / HH * 100, label: wan(v) }; });
+    const hn = Math.min(s.hn === null || s.hn === undefined ? n - 1 : s.hn, n - 1);
+    const nwPts = nws.map((v, i) => ({
+      left: px(i) / W * 100, top: py(v) / HH * 100,
+      aria: monF[i] + ' 净资产 ' + fmt(v),
+      enter: set({ hn: i })
+    }));
+    const nwX = mon.map((m, i) => ({ left: px(i) / W * 100, text: m, cls: (n === 12 && i % 2 === 1) ? 'skipm' : '' }));
+    const hnPrev = hn > 0 ? nws[hn - 1] : base;
+
+    // ---- income / expense bars
+    const maxV = Math.max.apply(null, inc.concat(exp));
+    const top = Math.ceil(maxV / 20000) * 20000;
+    const hf = Math.min(s.hf === null || s.hf === undefined ? n - 1 : s.hf, n - 1);
+    const bars = mon.map((m, i) => ({
+      label: m, i,
+      hi: inc[i] / top * 100, he: exp[i] / top * 100,
+      cls: 'barcol' + (i === hf ? ' on' : ''),
+      aria: monF[i] + ' 收入 ' + fmt(inc[i]) + ' 支出 ' + fmt(exp[i]),
+      enter: set({ hf: i })
+    }));
+    const flowTicks = [0, 1, 2, 3, 4].map((q) => ({ y: (1 - q / 4) * 100, label: wan(top * q / 4) }));
+    const hfNetV = inc[hf] - exp[hf];
+
+    // ---- categories
+    const catSorted = D.expCats.slice().sort((a, b) => b.share - a.share);
+    const catShow = catSorted;
+    const catMax = catSorted[0].share;
+    const cats = catShow.map((c) => ({ name: c.name, amount: fmt(c.share / 100 * tExp), share: pc(c.share, 0), w: c.share / catMax * 100 }));
+    const incMax = D.incSrc[0].share;
+    const incs = D.incSrc.map((c) => ({ name: c.name, amount: fmt(c.share / 100 * tInc), share: pc(c.share, 0), w: c.share / incMax * 100 }));
+
+    // ---- transactions
+    const txAll = D.txs.map((t) => ({ date: t.date, desc: t.desc, cat: t.cat, acct: t.acct, type: t.amt > 0 ? 'in' : 'out', amount: sgn(t.amt), tone: t.amt > 0 ? 'pos' : '' }));
+    const cntIn = txAll.filter((t) => t.type === 'in').length, cntOut = txAll.length - cntIn;
+    let txs;
+    if (view === 'ov') { txs = txAll.slice(0, 6); }
+    else { txs = s.tx === 'all' ? txAll : txAll.filter((t) => t.type === s.tx); }
+    const txFilters = [
+      { label: '全部', count: txAll.length, on: s.tx === 'all', pick: set({ tx: 'all' }) },
+      { label: '收入', count: cntIn, on: s.tx === 'in', pick: set({ tx: 'in' }) },
+      { label: '支出', count: cntOut, on: s.tx === 'out', pick: set({ tx: 'out' }) }
+    ];
+
+    // ---- allocation mosaic
+    const fc = clsById[s.focus];
+    const legend = C.map((c, i) => ({
+      i, name: c.name, bg: c.bg, pctText: pc(c.actual), valueText: fmt(c.value),
+      grow: c.actual.toFixed(2), basis: Math.max(120, Math.round(c.actual * 5)),
+      on: s.focus === c.id,
+      cls: 'mt' + (s.focus === c.id ? ' on' : '') + (s.focus !== 'all' && s.focus !== c.id ? ' dim' : ''),
+      pick: set({ focus: s.focus === c.id ? 'all' : c.id })
+    }));
+
+    // ---- rebalance
+    const scaleMax = 40;
+    const rebal = C.map((c) => {
+      const ok = Math.abs(c.drift) < 2;
+      const over = c.drift > 0;
+      return {
+        name: c.name, color: c.color, w: Math.min(c.actual / scaleMax * 100, 100), tickLeft: c.target / scaleMax * 100,
+        actual: pc(c.actual), target: pc(c.target, 0),
+        stCls: ok ? 'ok' : (over ? 'over' : 'under'), stText: ok ? '均衡' : (over ? '超配' : '低配'),
+        advice: ok ? '偏离 ' + (c.drift >= 0 ? '+' : '−') + Math.abs(c.drift).toFixed(1) + ' 点' : (over ? '建议减持约 ' : '建议增持约 ') + fmt(Math.abs(c.amt))
+      };
+    });
+
+    // ---- holdings table
+    const holdFilters = [{ label: '全部', count: H.length, on: s.cls === 'all', pick: set({ cls: 'all' }) }].concat(
+      C.map((c) => ({ label: c.name, count: c.count, on: s.cls === c.id, pick: set({ cls: c.id }) })));
+    const holdList = (s.cls === 'all' ? H : H.filter((h) => h.cls === s.cls));
+    const maxW = Math.max.apply(null, H.map((h) => h.value / assets * 100));
+    const holds = holdList.map((h) => ({
+      name: h.name, code: h.code, clsName: clsById[h.cls].name, color: clsById[h.cls].color,
+      value: fmt(h.value), cost: fmt(h.cost), pnl: h.pnl === 0 ? '—' : sgn(h.pnl),
+      pnlPct: h.pnl === 0 ? '—' : spc(h.pnl / h.cost * 100), tone: tone(h.pnl),
+      weight: pc(h.value / assets * 100), bar: h.value / assets * 100 / maxW * 100
+    }));
+    const pl = H.filter((h) => h.pnl !== 0).sort((a, b) => b.pnl - a.pnl);
+    const pMax = Math.max.apply(null, pl.map((h) => Math.abs(h.pnl)));
+    const pnls = pl.map((h) => ({ name: h.name, w: Math.abs(h.pnl) / pMax * 100, color: h.pnl > 0 ? '#4E7F63' : '#D4733F', tone: tone(h.pnl), text: sgn(h.pnl) }));
+    const liabs = D.liabs.map((l) => ({ name: l.name, note: l.note, balance: fmt(l.balance) }));
+
+    // ---- converter
+    const optList = D.currencies.map((c) => ({ code: c.code, label: c.name + ' ' + c.code }));
+    const amtNum = parseFloat(String(s.cvAmt).replace(/,/g, ''));
+    const amtOk = isFinite(amtNum);
+    const fromC = byCode[s.cvFrom] || byCode.USD, toC = byCode[s.cvTo] || byCode.TWD;
+    const pair = (a, b) => perUSD(b) / perUSD(a);
+    const fmtRate = (r) => r >= 100 ? r.toFixed(2) : (r >= 1 ? r.toFixed(3) : r.toFixed(4));
+    const conv2 = (x, to) => x * pair(fromC.code, to);
+    const res2 = (x, code) => x.toLocaleString('en-US', { minimumFractionDigits: code === 'JPY' ? 0 : 2, maximumFractionDigits: code === 'JPY' ? 0 : 2 });
+    const quick = D.currencies.map((c) => ({
+      name: c.name, code: c.code,
+      value: amtOk ? c.sym + ' ' + res2(conv2(amtNum, c.code), c.code) : '—',
+      rate: c.code === fromC.code ? '—' : fmtRate(pair(fromC.code, c.code))
+    }));
+    const rateRows = D.currencies.map((c) => ({
+      name: c.name, code: c.code, aria: '1 美元兑' + c.name,
+      val: c.code === 'USD' ? '1' : (s.rates[c.code] !== undefined ? s.rates[c.code] : String(c.perUSD)),
+      fixed: c.code === 'USD',
+      edit: (e) => { const r = Object.assign({}, s.rates); r[c.code] = e.target.value; this.setState({ rates: r }); }
+    }));
+
+    const viewIdx = { ov: 0, flow: 1, alloc: 2, assets: 3, fx: 4 }[view];
+
+    return {
+      cur: cur2, navIdx: viewIdx,
+      appCls: s.hide ? 'hid' : '',
+      stageCls: (s.nav % 2 === 0 ? 'a' : 'b'),
+      goOv: go({ view: 'ov' }), goFlow: go({ view: 'flow' }), goAlloc: go({ view: 'alloc' }), goAssets: go({ view: 'assets' }), goFx: go({ view: 'fx' }),
+      title: titles[view][0], lede: titles[view][1],
+      showRange: view === 'ov' || view === 'flow',
+      r6: n === 6, r12: n === 12, segX: n === 6 ? '0%' : '100%',
+      setR6: go({ range: 6 }), setR12: go({ range: 12 }),
+      disp, dispOpts: optList, setDisp: (e) => { this.setState({ disp: e.target.value }); },
+      hide: s.hide, hideLabel: s.hide ? '显示金额' : '隐藏金额',
+      toggleHide: set({ hide: !s.hide }),
+      showKpis: view !== 'ov' && view !== 'fx',
+      showKgrid: view === 'ov',
+      kpis,
+      showHero: view === 'ov',
+      heroCur: sym, heroNum: num(nwNow * T),
+      heroDelta: (dNw >= 0 ? '▲ ' : '▼ ') + sgn(dNw) + '（' + spc(dNw / base * 100) + '）', heroTone: tone(dNw),
+      heroSub: '较 ' + n + ' 个月前',
+      nwTicks, nwLine: line, nwArea: area, nwPts, nwX,
+      curLeft: px(hn) / W * 100, curTop: py(nws[hn]) / HH * 100,
+      hnMonth: monF[hn], hnValue: fmt(nws[hn]), hnDelta: sgn(nws[hn] - hnPrev), hnTone: tone(nws[hn] - hnPrev),
+      showMosaic: view === 'ov' || view === 'alloc',
+      mosaicWidth: view === 'ov' ? 'w1' : 'w1', mosaicCls: view === 'alloc' ? 'big' : '',
+      dLabel: fc ? fc.name : '总资产', dValue: fmt(fc ? fc.value : assets),
+      dSub: fc ? pc(fc.actual) + ' · 目标 ' + fc.target + '%' : '共 ' + H.length + ' 项持仓', legend,
+      showBrkTop: view === 'ov',
+      showBars: view === 'ov' || view === 'flow',
+      bars, flowTicks,
+      hfMonth: monF[hf], hfInc: fmt(inc[hf]), hfExp: fmt(exp[hf]), hfNet: sgn(hfNetV), hfTone: tone(hfNetV),
+      showCats: view === 'ov' || view === 'flow',
+      catSub: '近 ' + n + ' 个月',
+      cats,
+      showBrkCats: view === 'flow', showBrkMid: view === 'ov',
+      showInc: view === 'flow', incSub: '近 ' + n + ' 个月', incs,
+      showTx: view === 'ov' || view === 'flow',
+      txCls: 'w2',
+      txTitle: view === 'ov' ? '最近流水' : '收支流水',
+      showTxFilter: view === 'flow', showTxAll: view === 'ov',
+      txFilters, txs,
+      showRebal: view === 'alloc', rebal,
+      showBrkRebal: view === 'alloc',
+      showRisk: view === 'alloc',
+      riskW: riskVal / assets * 100, defW: defVal / assets * 100,
+      riskText: pc(riskVal / assets * 100), defText: pc(defVal / assets * 100),
+      riskAmt: fmt(riskVal), defAmt: fmt(defVal),
+      showHold: view === 'assets', holdFilters, holds,
+      showBrkHold: view === 'assets',
+      showPnl: view === 'assets', pnls,
+      showLiab: view === 'assets', liabs, liabTotal: fmt(liab), liabRate: pc(liab / assets * 100),
+      showFx: view === 'fx',
+      cvAmt: s.cvAmt, cvFrom: s.cvFrom, cvTo: s.cvTo, fxOpts: optList,
+      setAmt: (e) => { this.setState({ cvAmt: e.target.value }); },
+      setFrom: (e) => { this.setState({ cvFrom: e.target.value }); },
+      setTo: (e) => { this.setState({ cvTo: e.target.value }); },
+      swapFx: () => { this.setState({ cvFrom: s.cvTo, cvTo: s.cvFrom }); },
+      resLabel: amtOk ? res2(amtNum, fromC.code) + ' ' + fromC.name + ' 约等于' : '请输入有效金额',
+      resValue: amtOk ? toC.sym + ' ' + res2(conv2(amtNum, toC.code), toC.code) : '—',
+      resRate: '1 ' + fromC.code + ' = ' + fmtRate(pair(fromC.code, toC.code)) + ' ' + toC.code + '　·　1 ' + toC.code + ' = ' + fmtRate(pair(toC.code, fromC.code)) + ' ' + fromC.code,
+      quick, quickSub: '以 ' + (amtOk ? res2(amtNum, fromC.code) : '—') + ' ' + fromC.code + ' 为基准',
+      rateRows, resetRates: set({ rates: {} })
+    };
+  }
+}
+</script>
+<script src="dc-lite.js"></script>
+</body>
+</html>
