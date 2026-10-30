@@ -18,7 +18,7 @@ body{margin:0;background:#F8F3E9;font-family:'Noto Sans SC',system-ui,sans-serif
 *{box-sizing:border-box}
 button,input,select{font-family:inherit}
 .app{--ink:#1F2A44;--mut:#55607A;--paper:#FFFDF8;--line:#E9DFC9;--navy:#1F2A44;--cream:#F8F3E9;--green:#4E7F63;--terra:#D4733F;
-  width:100%;max-width:1360px;margin:0 auto;box-sizing:border-box;min-height:100%;background:var(--cream);color:var(--ink);padding:26px clamp(16px,3.4vw,52px) 56px;display:flex;flex-direction:column;gap:30px}
+  width:100%;max-width:1360px;margin:0 auto;box-sizing:border-box;min-height:100%;background:transparent;position:relative;z-index:1;color:var(--ink);padding:26px clamp(16px,3.4vw,52px) 56px;display:flex;flex-direction:column;gap:30px}
 .serif{font-family:'DM Serif Display','Noto Serif SC',serif}
 .num{font-variant-numeric:tabular-nums}
 .m{transition:filter .45s cubic-bezier(.3,.8,.2,1)}
@@ -314,9 +314,39 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .imsg{font-size:13px}
 .imsg.ok{color:#4E7F63}
 .imsg.err{color:#B5532A}
+.shell{position:relative;overflow:hidden;min-height:100%;background:#F8F3E9}
+.deco{position:absolute;inset:0;z-index:0;pointer-events:none}
+.deco .blob{position:absolute;border-radius:50%;display:none}
+.deco .ring{position:absolute;border-radius:50%;border:1.5px solid rgba(31,42,68,.13);display:none}
+.mnote{position:absolute;display:none;align-items:center;gap:16px;white-space:nowrap;transform-origin:0 0;font:500 14px/1.6 'Noto Serif SC',serif;letter-spacing:.3em;color:#7A8196}
+.mnote em{display:flex;gap:9px;font-style:normal}
+.mnote u{display:block;width:10px;height:10px;border-radius:50%;text-decoration:none}
+.mnote .d1{background:#D7E3CF}.mnote .d2{background:#F2D5CE}.mnote .d3{background:#F4E8B8}.mnote .d4{background:#D4E2EE}
+@media (min-width:1500px){
+.deco .blob,.deco .ring{display:block}
+.deco .b1{width:520px;height:520px;left:-210px;top:150px;background:radial-gradient(circle at 40% 40%,rgba(215,227,207,.95),rgba(215,227,207,.45) 62%,rgba(215,227,207,0) 72%)}
+.deco .b2{width:560px;height:560px;right:-250px;top:460px;background:radial-gradient(circle at 60% 40%,rgba(242,213,206,.95),rgba(242,213,206,.45) 62%,rgba(242,213,206,0) 72%)}
+.deco .b3{width:420px;height:420px;left:-170px;top:1020px;background:radial-gradient(circle at 50% 50%,rgba(244,232,184,.95),rgba(244,232,184,.4) 62%,rgba(244,232,184,0) 72%)}
+.deco .b4{width:380px;height:380px;right:-150px;top:1280px;background:radial-gradient(circle at 50% 50%,rgba(212,226,238,.95),rgba(212,226,238,.4) 62%,rgba(212,226,238,0) 72%)}
+.deco .r1{width:300px;height:300px;right:-120px;top:70px}
+.deco .r2{width:210px;height:210px;right:-75px;top:115px}
+.deco .r3{width:260px;height:260px;left:-130px;top:760px}
+}
+@media (min-width:1560px){
+.mnote{display:flex}
+.mnote.l{left:calc(50% - 680px - 78px);top:400px;transform:rotate(-90deg)}
+.mnote.r{left:calc(50% + 680px + 78px);top:150px;transform:rotate(90deg)}
+}
 </style>
 </helmet>
 
+<div class="shell">
+<div class="deco" aria-hidden="true">
+<i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><i class="blob b4"></i>
+<i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i>
+<div class="mnote l"><span>持衡 · 个人资产手账</span><em><u class="d1"></u><u class="d2"></u><u class="d3"></u></em></div>
+<div class="mnote r"><span>{{sideNote}}</span><em><u class="d4"></u></em></div>
+</div>
 <div class="app {{appCls}}">
 
 <header class="top">
@@ -822,6 +852,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
 <div class="foot">数据截至今日；示例数据仅用于演示；汇率为示例参考值，非实时行情。收益率 = 浮动盈亏 ÷ 成本；储蓄率 = 结余 ÷ 收入；应急储备 = 现金与存款 ÷ 区间月均支出。账目以新台币记录，切换显示币种时按设置的汇率换算。</div>
 </main>
+</div>
 </div>
 </script>
 <script type="text/x-dc" data-dc-script>
@@ -1525,7 +1556,7 @@ class Component extends DCLogic {
     const lede0 = titles[view][1];
 
     return {
-      cur: cur2, navIdx: viewIdx,
+      cur: cur2, navIdx: viewIdx, sideNote: '第 0' + (viewIdx + 1) + ' 页 · ' + titles[view][0] + ' · ' + TODAY.replace(/-/g, '.'),
       appCls: s.hide ? 'hid' : '',
       stageCls: (s.nav % 2 === 0 ? 'a' : 'b'),
       goOv: go({ view: 'ov' }), goFlow: go({ view: 'flow' }), goAlloc: go({ view: 'alloc' }), goAssets: go({ view: 'assets' }), goFx: go({ view: 'fx' }),
