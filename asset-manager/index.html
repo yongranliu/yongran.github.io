@@ -223,6 +223,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .mosaic{display:flex;flex-wrap:wrap;gap:10px}
 .mt{border:0;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;min-height:104px;min-width:0;cursor:pointer;text-align:left;color:var(--ink);font-family:'Noto Sans SC',sans-serif;transition:transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s ease,box-shadow .4s ease}
 .mosaic.big .mt{min-height:150px}
+.fillcol{display:flex;flex-direction:column}
+.fillcol .mosaic{flex:1;align-content:stretch}
 .mt:hover{transform:translateY(-3px)}
 .mt.dim{opacity:.38}
 .mt.on{box-shadow:0 0 0 2px var(--navy)}
@@ -1118,7 +1120,7 @@ class Component extends DCLogic {
     const sym = byCode[disp].sym;
     const fx = perUSD(disp) / perUSD('TWD');
     const cv = (n) => n * fx;
-    const decFor = (code, a) => (code === 'JPY' || code === 'TWD') ? 0 : (a < 1000 ? 2 : 0);
+    const decFor = (code, a) => (code === 'JPY' || code === 'TWD') ? 0 : (a < 100 ? 2 : 0);
     const numC = (x, code) => { const d = decFor(code, Math.abs(x)); return x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
     const num = (twd) => numC(cv(twd), disp);
     const fmt = (twd) => sym + num(twd);
@@ -1338,7 +1340,7 @@ class Component extends DCLogic {
     const ps = Math.max(1, Math.ceil(nb / 18));
     const nwPts = [];
     for (let i = 0; i < nb; i++) { if (i % ps === 0 || i === nb - 1) nwPts.push({ left: px(i) / W * 100, top: py(nws[i]) / HH * 100, aria: fullLabel(buckets[i]) + ' 净资产 ' + fmt(nws[i]), enter: set({ hn: i }) }); }
-    const nwX = buckets.map((b, i) => ({ left: px(i) / W * 100, text: i % step === 0 ? shortLabel(b) : '', cls: '' }));
+    const nwX = buckets.map((b, i) => ({ left: px(i) / W * 100, text: i % step === 0 ? shortLabel(b) : '', cls: (nb > 6 && i % 2 === 1) ? 'skipm' : '' }));
     const hnPrev = hn > 0 ? nws[hn - 1] : base;
 
     // ---- income / expense bars
@@ -1582,12 +1584,12 @@ class Component extends DCLogic {
       curLeft: px(hn) / W * 100, curTop: py(nws[hn]) / HH * 100,
       hnMonth: fullLabel(buckets[hn]), hnValue: fmt(nws[hn]), hnDelta: sgn(nws[hn] - hnPrev), hnTone: tone(nws[hn] - hnPrev),
       showMosaic: view === 'ov' || view === 'alloc',
-      mosaicWidth: 'w1', mosaicCls: view === 'alloc' ? 'big' : '',
+      mosaicWidth: view === 'alloc' ? 'w1 fillcol' : 'w1', mosaicCls: view === 'alloc' ? 'big' : '',
       dLabel: fc ? fc.name : '总资产', dValue: fmt(fc ? fc.value : assets),
       dSub: fc ? pc(fc.actual) + ' · 目标 ' + fc.target + '%' : '共 ' + H.length + ' 项持仓', legend,
       showBrkTop: view === 'ov',
       showBars: view === 'ov' || view === 'flow',
-      bars, flowTicks, barMin: Math.max(440, nb * 14 + 60),
+      bars, flowTicks, barMin: Math.max(300, nb * 14 + 60),
       hfMonth: fullLabel(buckets[hf]), hfInc: fmt(inc[hf]), hfExp: fmt(exp[hf]), hfNet: sgn(hfNetV), hfTone: tone(hfNetV),
       showCats: view === 'ov' || view === 'flow',
       catSub: '共 ' + cats.length + ' 类', hasCats: cats.length > 0,
