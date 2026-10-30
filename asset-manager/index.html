@@ -18,7 +18,7 @@ body{margin:0;background:#F8F3E9;font-family:'Noto Sans SC',system-ui,sans-serif
 *{box-sizing:border-box}
 button,input,select{font-family:inherit}
 .app{--ink:#1F2A44;--mut:#55607A;--paper:#FFFDF8;--line:#E9DFC9;--navy:#1F2A44;--cream:#F8F3E9;--green:#4E7F63;--terra:#D4733F;
-  min-width:0;min-height:100%;background:var(--cream);color:var(--ink);padding:26px clamp(16px,3.4vw,52px) 56px;display:flex;flex-direction:column;gap:30px}
+  width:100%;max-width:1360px;margin:0 auto;box-sizing:border-box;min-height:100%;background:var(--cream);color:var(--ink);padding:26px clamp(16px,3.4vw,52px) 56px;display:flex;flex-direction:column;gap:30px}
 .serif{font-family:'DM Serif Display','Noto Serif SC',serif}
 .num{font-variant-numeric:tabular-nums}
 .m{transition:filter .45s cubic-bezier(.3,.8,.2,1)}
@@ -183,7 +183,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .bars{position:absolute;left:0;right:0;top:0;display:flex;gap:4px;z-index:1;justify-content:space-evenly}
 .barcol{flex:1 1 0;max-width:72px;min-width:0;border:0;background:transparent;padding:0;display:flex;flex-direction:column;cursor:pointer;border-radius:99px;transition:background .35s ease}
 .barcol:hover,.barcol.on{background:#F6EFDD}
-.pair{height:180px;display:flex;align-items:flex-end;justify-content:center;gap:4px;padding-bottom:6px}
+.pair{height:236px;display:flex;align-items:flex-end;justify-content:center;gap:4px;padding-bottom:6px}
 .bar{width:34%;max-width:13px;min-height:6px;border-radius:99px;transition:height .8s cubic-bezier(.2,.9,.2,1),opacity .3s ease}
 .bar.i{background:var(--green)}
 .bar.o{background:var(--terra)}
@@ -223,6 +223,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .mosaic{display:flex;flex-wrap:wrap;gap:10px}
 .mt{border:0;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;min-height:104px;min-width:0;cursor:pointer;text-align:left;color:var(--ink);font-family:'Noto Sans SC',sans-serif;transition:transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s ease,box-shadow .4s ease}
 .mosaic.big .mt{min-height:150px}
+.fillcol{display:flex;flex-direction:column}
+.fillcol .mosaic{flex:1;align-content:stretch}
 .mt:hover{transform:translateY(-3px)}
 .mt.dim{opacity:.38}
 .mt.on{box-shadow:0 0 0 2px var(--navy)}
@@ -540,13 +542,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="readout"><span>{{hfMonth}}</span><span>收入 <b class="num m">{{hfInc}}</b></span><span>支出 <b class="num m">{{hfExp}}</b></span><span>结余 <b class="num m {{hfTone}}">{{hfNet}}</b></span></div>
 <div class="barscroll">
 <div class="barwrap nbox" style="min-width: {{barMin}}px">
-<div class="plot" style="height: 204px">
-<div style="position:absolute;left:0;right:0;top:0;height:180px">
+<div class="plot" style="height: 260px">
+<div style="position:absolute;left:0;right:0;top:0;height:236px">
 <sc-for list="{{flowTicks}}" as="t" hint-placeholder-count="5">
 <div class="gl" style="top: {{t.y}}%"><span class="m">{{t.label}}</span></div>
 </sc-for>
 </div>
-<div class="bars" style="height: 204px">
+<div class="bars" style="height: 260px">
 <sc-for list="{{bars}}" as="b" hint-placeholder-count="12">
 <button class="{{b.cls}}" aria-label="{{b.aria}}" onMouseEnter="{{b.enter}}" onFocus="{{b.enter}}" onClick="{{b.enter}}">
 <div class="pair" style="--d: {{b.i}}"><div class="bar i" style="height: {{b.hi}}%"></div><div class="bar o" style="height: {{b.he}}%"></div></div>
@@ -1118,7 +1120,7 @@ class Component extends DCLogic {
     const sym = byCode[disp].sym;
     const fx = perUSD(disp) / perUSD('TWD');
     const cv = (n) => n * fx;
-    const decFor = (code, a) => (code === 'JPY' || code === 'TWD') ? 0 : (a < 1000 ? 2 : 0);
+    const decFor = (code, a) => (code === 'JPY' || code === 'TWD') ? 0 : (a < 100 ? 2 : 0);
     const numC = (x, code) => { const d = decFor(code, Math.abs(x)); return x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
     const num = (twd) => numC(cv(twd), disp);
     const fmt = (twd) => sym + num(twd);
@@ -1338,7 +1340,7 @@ class Component extends DCLogic {
     const ps = Math.max(1, Math.ceil(nb / 18));
     const nwPts = [];
     for (let i = 0; i < nb; i++) { if (i % ps === 0 || i === nb - 1) nwPts.push({ left: px(i) / W * 100, top: py(nws[i]) / HH * 100, aria: fullLabel(buckets[i]) + ' 净资产 ' + fmt(nws[i]), enter: set({ hn: i }) }); }
-    const nwX = buckets.map((b, i) => ({ left: px(i) / W * 100, text: i % step === 0 ? shortLabel(b) : '', cls: '' }));
+    const nwX = buckets.map((b, i) => ({ left: px(i) / W * 100, text: i % step === 0 ? shortLabel(b) : '', cls: (nb > 6 && i % 2 === 1) ? 'skipm' : '' }));
     const hnPrev = hn > 0 ? nws[hn - 1] : base;
 
     // ---- income / expense bars
@@ -1582,12 +1584,12 @@ class Component extends DCLogic {
       curLeft: px(hn) / W * 100, curTop: py(nws[hn]) / HH * 100,
       hnMonth: fullLabel(buckets[hn]), hnValue: fmt(nws[hn]), hnDelta: sgn(nws[hn] - hnPrev), hnTone: tone(nws[hn] - hnPrev),
       showMosaic: view === 'ov' || view === 'alloc',
-      mosaicWidth: 'w1', mosaicCls: view === 'alloc' ? 'big' : '',
+      mosaicWidth: view === 'alloc' ? 'w1 fillcol' : 'w1', mosaicCls: view === 'alloc' ? 'big' : '',
       dLabel: fc ? fc.name : '总资产', dValue: fmt(fc ? fc.value : assets),
       dSub: fc ? pc(fc.actual) + ' · 目标 ' + fc.target + '%' : '共 ' + H.length + ' 项持仓', legend,
       showBrkTop: view === 'ov',
       showBars: view === 'ov' || view === 'flow',
-      bars, flowTicks, barMin: Math.max(440, nb * 14 + 60),
+      bars, flowTicks, barMin: Math.max(300, nb * 14 + 60),
       hfMonth: fullLabel(buckets[hf]), hfInc: fmt(inc[hf]), hfExp: fmt(exp[hf]), hfNet: sgn(hfNetV), hfTone: tone(hfNetV),
       showCats: view === 'ov' || view === 'flow',
       catSub: '共 ' + cats.length + ' 类', hasCats: cats.length > 0,
