@@ -301,6 +301,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .ferr{color:#B5532A;font-size:13px}
 .del{margin-left:10px;border:0;background:transparent;color:#B5532A;font:500 12px 'Noto Sans SC',sans-serif;cursor:pointer;padding:4px 6px;border-radius:8px}
 .del:hover{background:#F2D5CE}
+.addbar{flex-wrap:wrap}
+.tag{font-size:12.5px;padding:7px 14px;border-radius:99px;font-weight:600}
+.tag.demo{background:#F4E8B8;color:#7A5F12}
+.tag.mine{background:#D7E3CF;color:#2F5A42}
+.hint{margin:0;font-size:13px;line-height:1.7;color:var(--mut)}
+.imptxt{width:100%;box-sizing:border-box;border:1px solid #DDD2B9;border-radius:18px;background:#fff;padding:14px 16px;font:400 13.5px/1.7 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);resize:vertical;min-height:150px;transition:border-color .25s ease,box-shadow .25s ease}
+.imptxt:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(31,42,68,.12);outline:none}
+.inp.file{height:48px;padding:7px 12px;border-radius:99px;font-size:13px;line-height:32px;cursor:pointer}
+.imsg{font-size:13px}
+.imsg.ok{color:#4E7F63}
+.imsg.err{color:#B5532A}
 </style>
 </helmet>
 
@@ -343,7 +354,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
 <div class="titlebar">
 <div>
-<div class="eyebrow">2026 年 10 月 29 日 · 周四</div>
+<div class="eyebrow">{{todayText}}</div>
 <h1>{{title}}</h1>
 <p class="lede">{{lede}}</p>
 </div>
@@ -378,8 +389,43 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
 <div class="addbar">
 <button class="tog addbtn" aria-pressed="{{adding}}" onClick="{{toggleAdd}}">{{addLabel}}</button>
+<button class="tog addbtn" aria-pressed="{{showImport}}" onClick="{{toggleImport}}">{{importLabel}}</button>
+<span class="{{tagCls}}">当前：{{dataTag}}</span>
+<button class="tog" onClick="{{toggleSample}}">{{sampleLabel}}</button>
 <sc-if value="{{hasFlash}}" hint-placeholder-val="{{ false }}"><span class="flash">{{flash}}</span></sc-if>
 </div>
+
+<sc-if value="{{showImport}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper addform" aria-label="导入数据">
+<div class="ch"><h3>导入我的数据</h3><span class="sub">支持 CSV（Excel 里「另存为 CSV」即可），也可以直接粘贴；数据只保存在本机浏览器</span></div>
+<div class="frow">
+<div class="seg s3" role="group" aria-label="导入类型" style="--sx: {{impModeX}}">
+<div class="segpill"></div>
+<button aria-pressed="{{impTx}}" onClick="{{setImpTx}}">收支流水</button>
+<button aria-pressed="{{impHold}}" onClick="{{setImpHold}}">资产持仓</button>
+<button aria-pressed="{{impLiab}}" onClick="{{setImpLiab}}">负债</button>
+</div>
+<label class="fld">文件中金额的币种
+<select class="sel" value="{{impCur}}" onChange="{{setImpCur}}">
+<sc-for list="{{impCurOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<label class="fld grow">选择 CSV 文件
+<input class="inp file" type="file" accept=".csv,.tsv,.txt,text/csv" onChange="{{onFile}}">
+</label>
+</div>
+<p class="hint">{{impHint}}</p>
+<textarea class="imptxt" rows="8" spellcheck="false" placeholder="在这里粘贴表格内容，第一行写表头" value="{{impText}}" onChange="{{setImpText}}"></textarea>
+<div class="frow">
+<button class="tog solid" onClick="{{doImport}}">导入</button>
+<button class="tog" onClick="{{fillExample}}">填入示例</button>
+<sc-if value="{{canClear}}" hint-placeholder-val="{{ false }}"><button class="tog" onClick="{{clearMine}}">{{clearLabel}}</button></sc-if>
+<sc-if value="{{hasImpMsg}}" hint-placeholder-val="{{ false }}"><span class="{{impMsgCls}}">{{impMsg}}</span></sc-if>
+</div>
+</section>
+</sc-if>
 
 <sc-if value="{{adding}}" hint-placeholder-val="{{ false }}">
 <section class="tile paper addform" aria-label="记一笔">
@@ -772,17 +818,23 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </div>
 </div>
 
-<div class="foot">数据截至 2026 年 10 月 29 日 · 示例数据，仅用于演示；汇率为示例参考值，非实时行情。收益率 = 浮动盈亏 ÷ 成本；储蓄率 = 结余 ÷ 收入；应急储备 = 现金与存款 ÷ 区间月均支出。账目以新台币记录，切换显示币种时按设置的汇率换算。</div>
+<div class="foot">数据截至今日；示例数据仅用于演示；汇率为示例参考值，非实时行情。收益率 = 浮动盈亏 ÷ 成本；储蓄率 = 结余 ÷ 收入；应急储备 = 现金与存款 ÷ 区间月均支出。账目以新台币记录，切换显示币种时按设置的汇率换算。</div>
 </main>
 </div>
 </script>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
   componentDidMount() {
+    const patch = {};
     try {
-      const raw = window.localStorage.getItem('chiheng.userTxs.v1');
-      if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) this.setState({ user: arr }); }
+      const ld = (k) => { const r = window.localStorage.getItem(k); return r ? JSON.parse(r) : null; };
+      const a = ld('chiheng.userTxs.v1'); if (Array.isArray(a)) patch.user = a;
+      const h = ld('chiheng.userHold.v1'); if (Array.isArray(h)) patch.userHold = h;
+      const l = ld('chiheng.userLiab.v1'); if (Array.isArray(l)) patch.userLiab = l;
+      if (window.localStorage.getItem('chiheng.useSample.v1') === '0') patch.useSample = false;
+      const d = window.localStorage.getItem('chiheng.disp.v1'); if (d) patch.disp = d;
     } catch (e) { /* storage unavailable: start empty */ }
+    if (Object.keys(patch).length) this.setState(patch);
     this.kick();
   }
   componentWillUnmount() { if (this._raf) cancelAnimationFrame(this._raf); if (this._ft) clearTimeout(this._ft); }
@@ -800,8 +852,144 @@ class Component extends DCLogic {
     this._raf = requestAnimationFrame(step);
   }
 
-  persist(arr) {
-    try { window.localStorage.setItem('chiheng.userTxs.v1', JSON.stringify(arr)); } catch (e) { /* ignore */ }
+  persist(arr) { this.save('chiheng.userTxs.v1', arr); }
+  save(key, val) {
+    try { window.localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val)); } catch (e) { /* ignore */ }
+  }
+
+  // ---------- CSV import helpers ----------
+  parseCSV(text) {
+    text = String(text).replace(/^\uFEFF/, '');
+    const first = text.split(/\r?\n/).find((l) => l.trim()) || '';
+    const cnt = (c) => first.split(c).length - 1;
+    const delim = cnt('\t') > 0 ? '\t' : (cnt(',') >= cnt(';') ? ',' : ';');
+    const rows = []; let row = [], cell = '', q = false;
+    const endRow = () => { row.push(cell); cell = ''; if (row.some((c) => c.trim() !== '')) rows.push(row.map((c) => c.trim())); row = []; };
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else { q = false; } } else { cell += ch; } }
+      else if (ch === '"') { q = true; }
+      else if (ch === delim) { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; endRow(); }
+      else { cell += ch; }
+    }
+    endRow();
+    return rows;
+  }
+  normDate(v) {
+    const t = String(v == null ? '' : v).trim();
+    let y, m, d, x;
+    if ((x = t.match(/^(\d{4})[-\/.年](\d{1,2})[-\/.月](\d{1,2})/))) { y = +x[1]; m = +x[2]; d = +x[3]; }
+    else if ((x = t.match(/^(\d{4})(\d{2})(\d{2})$/))) { y = +x[1]; m = +x[2]; d = +x[3]; }
+    else if ((x = t.match(/^(\d{2,3})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) { y = +x[1] + 1911; m = +x[2]; d = +x[3]; }
+    else if ((x = t.match(/^(\d{1,2})[\/](\d{1,2})[\/](\d{4})$/))) { y = +x[3]; m = +x[1]; d = +x[2]; }
+    else { return ''; }
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return '';
+    return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+  parseNum(v) {
+    const t = String(v == null ? '' : v).trim().replace(/[,，\s]/g, '');
+    if (!t) return NaN;
+    const neg = /^\(.*\)$/.test(t) || /^[^\d]*[-−–]/.test(t);
+    const n = parseFloat(t.replace(/[^\d.]/g, ''));
+    return isNaN(n) ? NaN : (neg ? -n : n);
+  }
+  clsOf(v) {
+    const t = String(v || '').toLowerCase();
+    if (/现金|現金|存款|存款|活期|定存|定期|储蓄|儲蓄|cash/.test(t)) return 'cash';
+    if (/基金|etf|fund/.test(t)) return 'fund';
+    if (/债|債|bond/.test(t)) return 'bond';
+    if (/黄金|黃金|gold|金条|金條/.test(t)) return 'gold';
+    if (/股|stock|equity/.test(t)) return 'stock';
+    return 'other';
+  }
+  headerKey(mode, h) {
+    const t = String(h || '').toLowerCase().replace(/\s/g, '');
+    if (mode === 'tx') {
+      if (/^(日期|date|交易日|交易日期|记账日期|記帳日期|日付|时间|時間)/.test(t)) return 'date';
+      if (/^(类型|類型|收支|方向|type)/.test(t)) return 'type';
+      if (/^(收入|存入|贷方|貸方|credit|income)/.test(t)) return 'inc';
+      if (/^(支出|提出|借方|debit|expense)/.test(t)) return 'exp';
+      if (/^(金额|金額|amount|交易金额|交易金額)/.test(t)) return 'amt';
+      if (/^(类别|類別|分类|分類|category)/.test(t)) return 'cat';
+      if (/^(账户|帳戶|账号|帳號|account|支付方式)/.test(t)) return 'acct';
+      if (/^(备注|備註|摘要|说明|說明|描述|商户|商家|note|memo|desc)/.test(t)) return 'desc';
+    } else if (mode === 'hold') {
+      if (/^(名称|名稱|name|品名|标的|標的)/.test(t)) return 'name';
+      if (/^(代码|代碼|code|ticker|symbol)/.test(t)) return 'code';
+      if (/^(类别|類別|资产类别|資產類別|class|type)/.test(t)) return 'cls';
+      if (/^(市值|现值|現值|value)/.test(t)) return 'value';
+      if (/^(成本|cost|本金)/.test(t)) return 'cost';
+    } else {
+      if (/^(名称|名稱|name)/.test(t)) return 'name';
+      if (/^(备注|備註|说明|說明|note)/.test(t)) return 'note';
+      if (/^(余额|餘額|balance|金额|金額|欠款)/.test(t)) return 'balance';
+    }
+    return '';
+  }
+  // returns { tx, hold, liab, bad, future } (amounts already converted to TWD by toTWD)
+  parseImport(text, mode, toTWD, todayN, minN, existing) {
+    const rows = this.parseCSV(text);
+    const out = { tx: [], hold: [], liab: [], bad: 0, future: 0, dup: 0, rows: 0 };
+    if (!rows.length) return out;
+    const defaults = { tx: ['date', 'amt', 'cat', 'acct', 'desc'], hold: ['name', 'code', 'cls', 'value', 'cost'], liab: ['name', 'note', 'balance'] };
+    const keys = rows[0].map((h) => this.headerKey(mode, h));
+    const hasHeader = keys.filter((x) => x).length >= 2;
+    const idx = {};
+    (hasHeader ? keys : defaults[mode]).forEach((k, i) => { if (k && idx[k] === undefined) idx[k] = i; });
+    const body = hasHeader ? rows.slice(1) : rows;
+    const get = (r, k) => (idx[k] === undefined ? '' : (r[idx[k]] || ''));
+    const seen = {};
+    (existing || []).forEach((u) => { seen[u.date + '|' + u.desc + '|' + u.amt + '|' + u.acct] = 1; });
+    out.rows = body.length;
+    body.forEach((r, i) => {
+      if (mode === 'tx') {
+        const date = this.normDate(get(r, 'date'));
+        if (!date) { out.bad++; return; }
+        const dn = this.dayNum(date);
+        if (dn < minN) { out.bad++; return; }
+        if (dn > todayN) { out.future++; return; }
+        let amt;
+        if (idx.amt !== undefined) {
+          const v = this.parseNum(get(r, 'amt'));
+          if (isNaN(v)) { out.bad++; return; }
+          const ty = get(r, 'type');
+          if (/支出|消费|消費|提|借|expense|out|debit/i.test(ty)) amt = -Math.abs(v);
+          else if (/收入|存|贷|貸|income|credit/i.test(ty)) amt = Math.abs(v);
+          else amt = v;
+        } else {
+          const a = this.parseNum(get(r, 'inc')), b = this.parseNum(get(r, 'exp'));
+          amt = (isNaN(a) ? 0 : Math.abs(a)) - (isNaN(b) ? 0 : Math.abs(b));
+        }
+        const twd = Math.round(toTWD(amt));
+        if (!twd) { out.bad++; return; }
+        const cat = get(r, 'cat') || (twd > 0 ? '其他收入' : '其他');
+        const rec = { id: 'u' + Date.now() + '_' + i, date, desc: get(r, 'desc') || cat, cat, acct: get(r, 'acct') || '导入', amt: twd };
+        const key = rec.date + '|' + rec.desc + '|' + rec.amt + '|' + rec.acct;
+        if (seen[key]) { out.dup++; return; }
+        seen[key] = 1; out.tx.push(rec);
+      } else if (mode === 'hold') {
+        const name = get(r, 'name'), v = this.parseNum(get(r, 'value'));
+        if (!name || isNaN(v)) { out.bad++; return; }
+        const c = this.parseNum(get(r, 'cost'));
+        out.hold.push({ name, code: get(r, 'code') || '导入', cls: this.clsOf(get(r, 'cls')), value: Math.round(toTWD(v)), cost: Math.round(toTWD(isNaN(c) ? v : c)) });
+      } else {
+        const name = get(r, 'name'), v = this.parseNum(get(r, 'balance'));
+        if (!name || isNaN(v) || v <= 0) { out.bad++; return; }
+        out.liab.push({ name, note: get(r, 'note') || '导入', balance: Math.round(toTWD(v)) });
+      }
+    });
+    return out;
+  }
+  decodeBytes(buf) {
+    const tryDec = (enc, fatal) => { try { return new TextDecoder(enc, { fatal: !!fatal }).decode(buf); } catch (e) { return null; } };
+    const u = tryDec('utf-8', true);
+    if (u !== null) return u;
+    const bad = (t) => (t.match(/\uFFFD/g) || []).length;
+    const b = tryDec('big5'), g = tryDec('gb18030');
+    if (b !== null && (g === null || bad(b) <= bad(g))) return b;
+    return g !== null ? g : tryDec('utf-8');
   }
 
   getData() {
@@ -910,10 +1098,13 @@ class Component extends DCLogic {
 
   renderVals() {
     const D = this.getData();
-    const TODAY = '2026-10-29';
+    const nowD = new Date();
+    const realToday = nowD.getFullYear() + '-' + String(nowD.getMonth() + 1).padStart(2, '0') + '-' + String(nowD.getDate()).padStart(2, '0');
+    const TODAY = realToday > '2026-10-29' ? realToday : '2026-10-29';
     const s = Object.assign({ view: 'ov', gran: 'month', preset: 'm12', cStart: '2026-09-01', cEnd: TODAY, tx: 'all', cls: 'all', focus: 'all', hide: false, hf: null, hn: null, nav: 0, t: 1, limit: 12,
-      disp: 'TWD', rates: {}, cvAmt: '1000', cvFrom: 'USD', cvTo: 'TWD', user: [], adding: false, flash: '',
+      disp: 'CNY', rates: {}, cvAmt: '1000', cvFrom: 'USD', cvTo: 'CNY', user: [], userHold: [], userLiab: [], useSample: true, showImport: false, impMode: 'tx', impText: '', impCur: '', impMsg: '', impOk: true, confirmClear: false, adding: false, flash: '',
       form: { type: 'out', date: TODAY, amt: '', cat: '餐饮', acct: '玉山活期', desc: '' }, formErr: '' }, this.state || {});
+    const useSample = s.useSample !== false;
     const set = (o) => () => this.setState(o);
     const go = (o) => () => { this.setState(Object.assign({ nav: s.nav + 1, hf: null, hn: null, limit: 12 }, o)); this.kick(); };
     const sum = (a) => a.reduce((x, y) => x + y, 0);
@@ -923,7 +1114,7 @@ class Component extends DCLogic {
     const byCode = {};
     D.currencies.forEach((c) => { byCode[c.code] = c; });
     const perUSD = (code) => { const v = parseFloat(s.rates[code]); return v > 0 ? v : byCode[code].perUSD; };
-    const disp = byCode[s.disp] ? s.disp : 'TWD';
+    const disp = byCode[s.disp] ? s.disp : 'CNY';
     const sym = byCode[disp].sym;
     const fx = perUSD(disp) / perUSD('TWD');
     const cv = (n) => n * fx;
@@ -940,16 +1131,19 @@ class Component extends DCLogic {
     const view = s.view;
 
     // ---- the ledger: sample data + entries the user has added
-    const seedTxs = this.getSeed();
-    const dayStart = this.dayNum('2025-11-01'), todayN = this.dayNum(TODAY), N = todayN - dayStart + 1;
-    const userTxs = (s.user || []).map((u) => Object.assign({}, u, { user: true, dn: this.dayNum(u.date) })).filter((u) => u.dn >= dayStart && u.dn <= todayN);
+    const seedTxs = useSample ? this.getSeed() : [];
+    const todayN = this.dayNum(TODAY), minN = this.dayNum('2015-01-01');
+    const userTxs = (s.user || []).map((u) => Object.assign({}, u, { user: true, dn: this.dayNum(u.date) })).filter((u) => u.dn >= minN && u.dn <= todayN);
+    let dayStart = useSample ? this.dayNum('2025-11-01') : todayN - 364;
+    userTxs.forEach((u) => { if (u.dn < dayStart) dayStart = u.dn; });
+    const N = todayN - dayStart + 1;
     const allTxs = seedTxs.concat(userTxs);
     const incD = new Array(N).fill(0), expD = new Array(N).fill(0);
     allTxs.forEach((t) => { const i = t.dn - dayStart; if (t.amt > 0) incD[i] += t.amt; else expD[i] += -t.amt; });
     const incPre = [0], expPre = [0], netPre = [0], gainPre = [0];
     const seedNet = sum(seedTxs.map((t) => t.amt));
     const userNet = sum(userTxs.map((t) => t.amt));
-    const gainTarget = 58400, gw = [1, 1.2, 0.6, 1.5, 0.4, 0.8, 1.6, -0.8, 1.4, 2, 1.1, 1.0], gws = sum(gw);
+    const gainTarget = useSample ? 58400 : 0, gw = [1, 1.2, 0.6, 1.5, 0.4, 0.8, 1.6, -0.8, 1.4, 2, 1.1, 1.0], gws = sum(gw);
     for (let i = 0; i < N; i++) {
       const d = new Date((dayStart + i) * 864e5);
       const mi = (d.getUTCFullYear() - 2025) * 12 + d.getUTCMonth() - 10;
@@ -961,11 +1155,14 @@ class Component extends DCLogic {
     const rangeSum = (pre, a, b) => pre[b - dayStart + 1] - pre[a - dayStart];
 
     // ---- holdings & classes (manual entries are added to cash)
-    const H = D.holdings.map((h) => Object.assign({}, h, { pnl: h.value - h.cost }));
+    const H = (useSample ? D.holdings : []).map((h) => Object.assign({}, h, { pnl: h.value - h.cost }));
+    (s.userHold || []).forEach((h) => { H.push(Object.assign({}, h, { pnl: h.value - h.cost })); });
     const seedAssets = sum(H.map((h) => h.value));
-    const liab = sum(D.liabs.map((l) => l.balance));
+    const liabList = (useSample ? D.liabs : []).concat(s.userLiab || []);
+    const liab = sum(liabList.map((l) => l.balance));
     if (userNet !== 0) H.push({ name: '记账结余（手动记录）', code: '来自「记一笔」', cls: 'cash', value: userNet, cost: userNet, pnl: 0 });
     const assets = sum(H.map((h) => h.value));
+    const A = assets > 0 ? assets : 1;
     const costAll = sum(H.map((h) => h.cost));
     const nwNow = assets - liab;
     const nw0 = (seedAssets - liab) - seedNet - gainTarget;
@@ -974,7 +1171,7 @@ class Component extends DCLogic {
     const C = D.classes.map((c) => {
       const list = H.filter((h) => h.cls === c.id);
       const value = sum(list.map((h) => h.value));
-      const actual = value / assets * 100;
+      const actual = value / A * 100;
       const drift = actual - c.target;
       const amt = (c.target - actual) / 100 * assets;
       const o = Object.assign({}, c, { value, actual, drift, amt, count: list.length });
@@ -1090,7 +1287,7 @@ class Component extends DCLogic {
     if (view === 'ov') {
       kpis = [
         k(0, '总资产', sym, num(assets * T), '', '', '共 ' + H.length + ' 项持仓与账户'),
-        k(1, '负债', sym, num(liab * T), '', '', '负债率 ' + pc(liab / assets * 100)),
+        k(1, '负债', sym, num(liab * T), '', '', '负债率 ' + pc(liab / A * 100)),
         k(2, '区间结余', sym, num(tNet * T), '', '', '收入 ' + fmt(tInc) + ' · 支出 ' + fmt(tExp)),
         k(3, '储蓄率', '', (rate * T).toFixed(1) + '%', '', '', '区间收入的 ' + pc(rate, 0) + ' 被存下')
       ];
@@ -1103,8 +1300,8 @@ class Component extends DCLogic {
       ];
     } else if (view === 'alloc') {
       kpis = [
-        k(0, '进取型资产', '', (riskVal / assets * 100 * T).toFixed(1) + '%', '', '', fmt(riskVal)),
-        k(3, '防御型资产', '', (defVal / assets * 100 * T).toFixed(1) + '%', '', '', fmt(defVal)),
+        k(0, '进取型资产', '', (riskVal / A * 100 * T).toFixed(1) + '%', '', '', fmt(riskVal)),
+        k(3, '防御型资产', '', (defVal / A * 100 * T).toFixed(1) + '%', '', '', fmt(defVal)),
         k(2, '应急储备', '', (reserve * T).toFixed(1) + ' 个月', '', '', '现金与存款 ' + fmt(cashValue)),
         k(1, '待调整类别', '', Math.round(needAdjust * T) + ' 项', '', '', '偏离目标 2 个百分点以上')
       ];
@@ -1114,7 +1311,7 @@ class Component extends DCLogic {
         k(3, '总市值', sym, num(assets * T), '', '', H.length + ' 项持仓与账户'),
         k(2, '总成本', sym, num(costAll * T), '', '', '含现金类本金'),
         k(0, '浮动盈亏', sym, num(pnlAll * T), (pnlAll >= 0 ? '▲ 高于成本' : '▼ 低于成本'), tone(pnlAll), '持仓整体' + (pnlAll >= 0 ? '盈利' : '亏损')),
-        k(1, '综合收益率', '', (pnlAll / costAll * 100 * T).toFixed(1) + '%', '', '', '浮动盈亏 ÷ 总成本')
+        k(1, '综合收益率', '', (pnlAll / (costAll || 1) * 100 * T).toFixed(1) + '%', '', '', '浮动盈亏 ÷ 总成本')
       ];
     }
 
@@ -1214,17 +1411,17 @@ class Component extends DCLogic {
     const holdFilters = [{ label: '全部', count: H.length, on: s.cls === 'all', pick: set({ cls: 'all' }) }].concat(
       C.map((c) => ({ label: c.name, count: c.count, on: s.cls === c.id, pick: set({ cls: c.id }) })));
     const holdList = (s.cls === 'all' ? H : H.filter((h) => h.cls === s.cls));
-    const maxW = Math.max.apply(null, H.map((h) => Math.max(h.value, 0) / assets * 100).concat([1]));
+    const maxW = Math.max.apply(null, H.map((h) => Math.max(h.value, 0) / A * 100).concat([1]));
     const holds = holdList.map((h) => ({
       name: h.name, code: h.code, clsName: clsById[h.cls].name, color: clsById[h.cls].color,
       value: fmt(h.value), cost: fmt(h.cost), pnl: h.pnl === 0 ? '—' : sgn(h.pnl),
-      pnlPct: h.pnl === 0 ? '—' : spc(h.pnl / h.cost * 100), tone: tone(h.pnl),
-      weight: pc(h.value / assets * 100), bar: Math.max(h.value, 0) / assets * 100 / maxW * 100
+      pnlPct: h.pnl === 0 ? '—' : spc(h.pnl / (h.cost || 1) * 100), tone: tone(h.pnl),
+      weight: pc(h.value / A * 100), bar: Math.max(h.value, 0) / A * 100 / maxW * 100
     }));
     const pl = H.filter((h) => h.pnl !== 0).sort((a, b) => b.pnl - a.pnl);
-    const pMax = Math.max.apply(null, pl.map((h) => Math.abs(h.pnl)));
+    const pMax = pl.length ? Math.max.apply(null, pl.map((h) => Math.abs(h.pnl))) : 1;
     const pnls = pl.map((h) => ({ name: h.name, w: Math.abs(h.pnl) / pMax * 100, color: h.pnl > 0 ? '#4E7F63' : '#D4733F', tone: tone(h.pnl), text: sgn(h.pnl) }));
-    const liabs = D.liabs.map((l) => ({ name: l.name, note: l.note, balance: fmt(l.balance) }));
+    const liabs = liabList.map((l) => ({ name: l.name, note: l.note, balance: fmt(l.balance) }));
 
     // ---- converter
     const optList = D.currencies.map((c) => ({ code: c.code, label: c.name + ' ' + c.code }));
@@ -1255,7 +1452,7 @@ class Component extends DCLogic {
     const saveTx = () => {
       const a = parseFloat(String(F.amt).replace(/,/g, ''));
       if (!(a > 0)) { this.setState({ formErr: '请输入大于 0 的金额' }); return; }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(F.date) || this.dayNum(F.date) < dayStart || this.dayNum(F.date) > todayN) { this.setState({ formErr: '日期需在 2025-11-01 至 ' + TODAY + ' 之间' }); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(F.date) || this.dayNum(F.date) < minN || this.dayNum(F.date) > todayN) { this.setState({ formErr: '日期需在 2015-01-01 至 ' + TODAY + ' 之间' }); return; }
       const twd = a / fx;
       const rec = { id: 'u' + Date.now(), date: F.date, desc: F.desc.trim() || fCat, cat: fCat, acct: F.acct, amt: Math.round(F.type === 'out' ? -twd : twd) };
       const arr = (s.user || []).concat([rec]);
@@ -1263,6 +1460,64 @@ class Component extends DCLogic {
       this.setState({ user: arr, form: Object.assign({}, F, { amt: '', desc: '' }), formErr: '', flash: '已记录：' + rec.desc + ' ' + (rec.amt < 0 ? '−' : '+') + sym + numC(Math.abs(a), disp) });
       this.flashOff();
     };
+
+    // ---- data import
+    const impMode = s.impMode || 'tx';
+    const impCurCode = byCode[s.impCur] ? s.impCur : disp;
+    const toTWD = (x) => x * perUSD('TWD') / perUSD(impCurCode);
+    const examples = {
+      tx: '日期,金额,类别,账户,备注\n2026-10-01,12000,工资,银行卡,十月工资\n2026-10-02,-2300,住房,银行卡,房租\n2026-10-03,-35.5,餐饮,支付宝,午餐',
+      hold: '名称,代码,类别,市值,成本\n招商银行活期,活期,现金,50000,50000\n沪深300ETF,510300,基金,32000,30000\n黄金ETF,518880,黄金,15000,13500',
+      liab: '名称,备注,余额\n助学贷款,年利率 1.15%,80000\n信用卡待缴,下期账单日 11 月 5 日,3200'
+    };
+    const hints = {
+      tx: '列：日期、金额、类别、账户、备注。金额为负是支出、为正是收入；也可以用「类型」列写收入/支出，或用「收入」「支出」两列。日期支持 2026-10-01、2026/10/1、20261001、民国 115/10/01。相同的记录重复导入会自动跳过。',
+      hold: '列：名称、代码、类别、市值、成本。类别写 现金 / 股票 / 基金 / 债券 / 黄金 / 加密 即可；成本留空则按市值。名称相同的持仓会被覆盖。',
+      liab: '列：名称、备注、余额。名称相同的负债会被覆盖。'
+    };
+    const hasMine = (s.user || []).length + (s.userHold || []).length + (s.userLiab || []).length > 0;
+    const doImport = () => {
+      const r = this.parseImport(s.impText || '', impMode, toTWD, todayN, minN, s.user || []);
+      const n = r.tx.length + r.hold.length + r.liab.length;
+      if (!n) {
+        const why = !(s.impText || '').trim() ? '请先选择文件或粘贴内容' : (r.dup && !r.bad ? '这些记录已经导入过了（共 ' + r.dup + ' 条重复）' : '没有识别出有效数据（' + r.bad + ' 行无法识别）。请检查表头和日期格式，点“填入示例”可查看格式');
+        this.setState({ impMsg: why, impOk: false }); return;
+      }
+      const patch = { impOk: true, nav: s.nav + 1, hf: null, hn: null };
+      let msg = '';
+      if (impMode === 'tx') {
+        const arr = (s.user || []).concat(r.tx); patch.user = arr; this.persist(arr);
+        msg = '已导入 ' + r.tx.length + ' 笔流水' + (r.dup ? '，跳过重复 ' + r.dup + ' 条' : '') + (r.bad ? '，' + r.bad + ' 行无法识别' : '') + (r.future ? '，' + r.future + ' 行日期晚于今天已忽略' : '');
+      } else if (impMode === 'hold') {
+        const names = {}; r.hold.forEach((h) => { names[h.name + '|' + h.code] = 1; });
+        const arr = (s.userHold || []).filter((h) => !names[h.name + '|' + h.code]).concat(r.hold); patch.userHold = arr; this.save('chiheng.userHold.v1', arr);
+        msg = '已导入 ' + r.hold.length + ' 项持仓' + (r.bad ? '，' + r.bad + ' 行无法识别' : '');
+      } else {
+        const names = {}; r.liab.forEach((h) => { names[h.name] = 1; });
+        const arr = (s.userLiab || []).filter((h) => !names[h.name]).concat(r.liab); patch.userLiab = arr; this.save('chiheng.userLiab.v1', arr);
+        msg = '已导入 ' + r.liab.length + ' 项负债' + (r.bad ? '，' + r.bad + ' 行无法识别' : '');
+      }
+      if (useSample && !hasMine) { patch.useSample = false; this.save('chiheng.useSample.v1', '0'); msg += '。已自动切换为“只用我的数据”，可随时切回示例'; }
+      patch.impMsg = msg; patch.impText = '';
+      this.setState(patch); this.kick();
+    };
+    const clearMine = () => {
+      if (!s.confirmClear) { this.setState({ confirmClear: true }); return; }
+      this.persist([]); this.save('chiheng.userHold.v1', []); this.save('chiheng.userLiab.v1', []);
+      this.setState({ user: [], userHold: [], userLiab: [], confirmClear: false, impMsg: '已清除你导入和记录的全部数据', impOk: true, nav: s.nav + 1 }); this.kick();
+    };
+    const onFile = (e) => {
+      const el = e.target, f = el.files && el.files[0];
+      if (!f) return;
+      f.arrayBuffer().then((buf) => {
+        const text = this.decodeBytes(buf).replace(/^\uFEFF/, '');
+        const lines = text.split(/\r?\n/).filter((l) => l.trim()).length;
+        this.setState({ impText: text, impMsg: '已读取 ' + f.name + '（' + lines + ' 行），确认无误后点“导入”', impOk: true });
+        try { el.value = ''; } catch (err) { /* ignore */ }
+      }).catch(() => { this.setState({ impMsg: '读取文件失败，请改用粘贴', impOk: false }); });
+    };
+    const wd = new Date(todayN * 864e5).getUTCDay();
+    const todayText = (new Date(todayN * 864e5).getUTCFullYear()) + ' 年 ' + (new Date(todayN * 864e5).getUTCMonth() + 1) + ' 月 ' + (new Date(todayN * 864e5).getUTCDate()) + ' 日 · 周' + wk[wd];
 
     const viewIdx = { ov: 0, flow: 1, alloc: 2, assets: 3, fx: 4 }[view];
     const lede0 = titles[view][1];
@@ -1282,10 +1537,28 @@ class Component extends DCLogic {
       preset, presetOpts: presetsBy[gran].map((p) => ({ code: p[0], label: p[1] })),
       setPreset: (e) => { this.setState({ preset: e.target.value, nav: s.nav + 1, hf: null, hn: null, limit: 12 }); this.kick(); },
       showCustom: preset === 'custom' && (view === 'ov' || view === 'flow'),
-      cStart: this.dayStr(startN), cEnd: this.dayStr(endN), dMin: '2025-11-01', dMax: TODAY,
+      cStart: this.dayStr(startN), cEnd: this.dayStr(endN), dMin: '2015-01-01', dMax: TODAY,
       setCStart: (e) => { this.setState({ cStart: e.target.value, preset: 'custom', hf: null, hn: null }); },
       setCEnd: (e) => { this.setState({ cEnd: e.target.value, preset: 'custom', hf: null, hn: null }); },
-      disp, dispOpts: optList, setDisp: (e) => { this.setState({ disp: e.target.value }); },
+      disp, dispOpts: optList, setDisp: (e) => { this.setState({ disp: e.target.value }); this.save('chiheng.disp.v1', e.target.value); },
+      todayText,
+      dataTag: useSample ? '示例数据' : '我的数据',
+      tagCls: useSample ? 'tag demo' : 'tag mine',
+      sampleLabel: useSample ? '只用我的数据' : '显示示例数据',
+      toggleSample: () => { const v = !useSample; this.save('chiheng.useSample.v1', v ? '1' : '0'); this.setState({ useSample: v, nav: s.nav + 1, hf: null, hn: null }); this.kick(); },
+      showImport: s.showImport, importLabel: s.showImport ? '收起导入' : '导入数据',
+      toggleImport: set({ showImport: !s.showImport, impMsg: '' }),
+      impModeX: { tx: 0, hold: 1, liab: 2 }[impMode],
+      impTx: impMode === 'tx', impHold: impMode === 'hold', impLiab: impMode === 'liab',
+      setImpTx: set({ impMode: 'tx', impMsg: '' }), setImpHold: set({ impMode: 'hold', impMsg: '' }), setImpLiab: set({ impMode: 'liab', impMsg: '' }),
+      impHint: hints[impMode], impText: s.impText || '', impCur: impCurCode, impCurOpts: optList,
+      setImpText: (e) => { this.setState({ impText: e.target.value }); },
+      setImpCur: (e) => { this.setState({ impCur: e.target.value }); },
+      fillExample: set({ impText: examples[impMode], impMsg: '已填入示例，可直接点“导入”试一下，或改成你自己的数据', impOk: true }),
+      onFile, doImport,
+      impMsg: s.impMsg, hasImpMsg: !!s.impMsg, impMsgCls: s.impOk ? 'imsg ok' : 'imsg err',
+      clearMine, clearLabel: s.confirmClear ? '再点一次确认清除' : '清除我的数据', canClear: hasMine,
+      cancelClear: set({ confirmClear: false }),
       hide: s.hide, hideLabel: s.hide ? '显示金额' : '隐藏金额',
       toggleHide: set({ hide: !s.hide }),
       adding: s.adding, toggleAdd: set({ adding: !s.adding, formErr: '' }), addLabel: s.adding ? '收起' : '记一笔',
@@ -1302,7 +1575,7 @@ class Component extends DCLogic {
       kpis,
       showHero: view === 'ov',
       heroCur: sym, heroNum: num(nwNow * T),
-      heroDelta: (dNw >= 0 ? '▲ ' : '▼ ') + sgn(dNw) + '（' + spc(dNw / base * 100) + '）', heroTone: tone(dNw),
+      heroDelta: (dNw >= 0 ? '▲ ' : '▼ ') + sgn(dNw) + ((base > 0 && Math.abs(dNw / base) < 10) ? '（' + spc(dNw / base * 100) + '）' : ''), heroTone: tone(dNw),
       heroSub: '自 ' + md(startN) + ' 起',
       prevWord: '较上一' + granName,
       nwTicks, nwLine: line, nwArea: area, nwPts, nwX,
@@ -1331,13 +1604,13 @@ class Component extends DCLogic {
       showRebal: view === 'alloc', rebal,
       showBrkRebal: view === 'alloc',
       showRisk: view === 'alloc',
-      riskW: riskVal / assets * 100, defW: defVal / assets * 100,
-      riskText: pc(riskVal / assets * 100), defText: pc(defVal / assets * 100),
+      riskW: riskVal / A * 100, defW: defVal / A * 100,
+      riskText: pc(riskVal / A * 100), defText: pc(defVal / A * 100),
       riskAmt: fmt(riskVal), defAmt: fmt(defVal),
       showHold: view === 'assets', holdFilters, holds,
       showBrkHold: view === 'assets',
       showPnl: view === 'assets', pnls,
-      showLiab: view === 'assets', liabs, liabTotal: fmt(liab), liabRate: pc(liab / assets * 100),
+      showLiab: view === 'assets', liabs, liabTotal: fmt(liab), liabRate: pc(liab / A * 100),
       showFx: view === 'fx',
       cvAmt: s.cvAmt, cvFrom: s.cvFrom, cvTo: s.cvTo, fxOpts: optList,
       setAmt: (e) => { this.setState({ cvAmt: e.target.value }); },

@@ -1,0 +1,1634 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>持衡 资产管理</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F8F3E9;font-family:'Noto Sans SC',system-ui,sans-serif;color:#1F2A44;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button,input,select{font-family:inherit}
+.app{--ink:#1F2A44;--mut:#55607A;--paper:#FFFDF8;--line:#E9DFC9;--navy:#1F2A44;--cream:#F8F3E9;--green:#4E7F63;--terra:#D4733F;
+  min-width:0;min-height:100%;background:var(--cream);color:var(--ink);padding:26px clamp(16px,3.4vw,52px) 56px;display:flex;flex-direction:column;gap:30px}
+.serif{font-family:'DM Serif Display','Noto Serif SC',serif}
+.num{font-variant-numeric:tabular-nums}
+.m{transition:filter .45s cubic-bezier(.3,.8,.2,1)}
+.hid .m,.hid .num{filter:blur(9px);user-select:none}
+
+/* motion: two identical sets alternate so a view change replays them */
+.stage{display:flex;flex-direction:column;gap:18px}
+.stage.a{--rise:riseA;--grow:growA;--reveal:revA;--fade:fadeA}
+.stage.b{--rise:riseB;--grow:growB;--reveal:revB;--fade:fadeB}
+@keyframes riseA{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes riseB{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes growA{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growB{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes revA{from{clip-path:inset(-10px 100% -10px -10px)}to{clip-path:inset(-10px -14px -10px -10px)}}
+@keyframes revB{from{clip-path:inset(-10px 100% -10px -10px)}to{clip-path:inset(-10px -14px -10px -10px)}}
+@keyframes fadeA{from{opacity:0}to{opacity:1}}
+@keyframes fadeB{from{opacity:0}to{opacity:1}}
+.stage .tile{animation:var(--rise) .75s cubic-bezier(.2,.8,.2,1) backwards}
+.row>.tile:nth-child(1),.row>.kgrid{animation-delay:.04s}
+.row>.tile:nth-child(2){animation-delay:.12s}
+.row>.tile:nth-child(3){animation-delay:.2s}
+.row>.tile:nth-child(4){animation-delay:.28s}
+.row>.tile:nth-child(5){animation-delay:.36s}
+.kgrid>.tile:nth-child(1){animation-delay:.1s}
+.kgrid>.tile:nth-child(2){animation-delay:.17s}
+.kgrid>.tile:nth-child(3){animation-delay:.24s}
+.kgrid>.tile:nth-child(4){animation-delay:.31s}
+.kpis>.tile:nth-child(1){animation-delay:.02s}
+.kpis>.tile:nth-child(2){animation-delay:.08s}
+.kpis>.tile:nth-child(3){animation-delay:.14s}
+.kpis>.tile:nth-child(4){animation-delay:.2s}
+.stage .mt{animation:var(--rise) .7s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(.25s + var(--d) * 70ms)}
+.stage .bar{transform-origin:bottom;animation:var(--grow) .9s cubic-bezier(.2,.9,.2,1) backwards;animation-delay:calc(.3s + var(--d) * 40ms)}
+.stage .draw{animation:var(--reveal) 1.5s cubic-bezier(.45,.05,.25,1) .25s backwards}
+.stage tbody tr{animation:var(--fade) .6s ease backwards}
+.stage tbody tr:nth-child(1){animation-delay:.4s}
+.stage tbody tr:nth-child(2){animation-delay:.45s}
+.stage tbody tr:nth-child(3){animation-delay:.5s}
+.stage tbody tr:nth-child(4){animation-delay:.55s}
+.stage tbody tr:nth-child(5){animation-delay:.6s}
+.stage tbody tr:nth-child(n+6){animation-delay:.65s}
+@media (prefers-reduced-motion:reduce){
+.stage .tile,.stage .mt,.stage .bar,.stage .draw,.stage tbody tr{animation:none}
+*{transition-duration:.01ms !important}
+}
+
+/* top bar */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:44px;height:44px;border-radius:50%;background:var(--navy);display:grid;place-items:center;flex:none}
+.brandname{font-family:'Noto Serif SC',serif;font-weight:700;font-size:24px;letter-spacing:.2em;line-height:1.1}
+.brandsub{font-size:12px;color:var(--mut);margin-top:3px;letter-spacing:.08em}
+.tabs{position:relative;display:grid;grid-template-columns:repeat(5,1fr);background:#EFE7D5;border-radius:99px;padding:5px;flex:1 1 420px;max-width:600px}
+.tabpill{position:absolute;top:5px;bottom:5px;left:5px;width:calc((100% - 10px) / 5);border-radius:99px;background:var(--navy);transform:translateX(calc(var(--i) * 100%));transition:transform .6s cubic-bezier(.3,.9,.2,1)}
+.tb{position:relative;z-index:1;min-height:44px;padding:0 6px;border:0;border-radius:99px;background:transparent;color:var(--mut);font:500 14px 'Noto Sans SC',sans-serif;cursor:pointer;transition:color .35s ease;white-space:nowrap}
+.tb:hover{color:var(--ink)}
+.tb[aria-current="page"],.tb[aria-current="page"]:hover{color:#F8F3E9}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #3D6FB8;outline-offset:2px}
+.tools{display:flex;gap:10px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--mut);min-width:0}
+.fld.grow{flex:1 1 180px}
+.sel{height:48px;border:1px solid #DDD2B9;border-radius:99px;background:var(--paper);padding:0 16px;font:500 14px 'Noto Sans SC',sans-serif;color:var(--ink);cursor:pointer;transition:border-color .25s ease}
+.sel:hover{border-color:#B9AD90}
+.inp{height:50px;border:1px solid #DDD2B9;border-radius:16px;background:#fff;padding:0 16px;font:500 16px 'Noto Sans SC',sans-serif;color:var(--ink);min-width:0;width:100%;transition:border-color .25s ease,box-shadow .25s ease}
+.inp:hover{border-color:#B9AD90}
+.inp:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(31,42,68,.12)}
+.inp:disabled{background:#F3EEE0;color:var(--mut)}
+.tog{min-height:48px;padding:0 18px;border-radius:99px;border:1px solid #DDD2B9;background:var(--paper);color:var(--mut);font:500 13.5px 'Noto Sans SC',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:9px;transition:background .3s ease,color .3s ease,border-color .3s ease,transform .3s ease;white-space:nowrap}
+.tog:hover{color:var(--ink);border-color:#B9AD90}
+.tog:active{transform:scale(.97)}
+.tog[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#F8F3E9}
+
+/* title */
+.titlebar{display:flex;flex-wrap:wrap;gap:16px 24px;justify-content:space-between;align-items:flex-end}
+.eyebrow{font-size:13px;letter-spacing:.18em;color:var(--mut);font-weight:500;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.eyebrow::before{content:'';width:28px;height:2px;background:var(--terra);border-radius:2px}
+.titlebar h1{margin:0;font-family:'Noto Serif SC',serif;font-size:60px;font-weight:700;letter-spacing:.06em;line-height:1.1}
+.lede{margin:12px 0 0;font-size:15px;color:var(--mut)}
+.seg{position:relative;display:inline-grid;grid-template-columns:1fr 1fr;background:#EFE7D5;border-radius:99px;padding:4px}
+.segpill{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:99px;background:var(--navy);transform:translateX(var(--sx));transition:transform .55s cubic-bezier(.3,.9,.2,1)}
+.seg button{position:relative;z-index:1;min-height:42px;padding:0 20px;border:0;border-radius:99px;background:transparent;font:500 13.5px 'Noto Sans SC',sans-serif;color:var(--mut);cursor:pointer;transition:color .35s ease;white-space:nowrap}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"],.seg button[aria-pressed="true"]:hover{color:#F8F3E9}
+
+/* tiles */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:16px}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:stretch}
+.brk{flex:0 0 100%;height:0;margin-top:-16px}
+.w2{flex:2 1 480px;min-width:0}
+.w1{flex:1 1 330px;min-width:0}
+.wf{flex:1 1 100%;min-width:0}
+.tile{--mut:#4B5870;position:relative;background:var(--paper);border:1px solid var(--line);border-radius:28px;padding:28px 30px;transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s ease}
+.tile.paper{--mut:#5B6578;box-shadow:0 1px 0 rgba(31,42,68,.03),0 22px 40px -30px rgba(31,42,68,.3)}
+.sage{background:#D7E3CF;border-color:#D7E3CF}
+.blush{background:#F2D5CE;border-color:#F2D5CE}
+.butter{background:#F4E8B8;border-color:#F4E8B8}
+.sky{background:#D4E2EE;border-color:#D4E2EE}
+.apricot{background:#F6DEC4;border-color:#F6DEC4}
+.lilac{background:#E2D8EE;border-color:#E2D8EE}
+.kgrid{flex:2 1 360px;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:16px}
+.kt{padding:24px 24px;display:flex;flex-direction:column}
+.kt:hover{transform:translateY(-4px)}
+.ch{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;margin-bottom:18px}
+.ch h3{margin:0;font-size:18px;font-weight:700;letter-spacing:.04em;font-family:'Noto Serif SC',serif}
+.sub{color:var(--mut);font-size:12.5px}
+.kt .l,.kpis .l{font-size:13px;color:var(--mut);letter-spacing:.06em;font-weight:500}
+.kt .v,.kpis .v{font:400 34px/1.1 'DM Serif Display','Noto Serif SC',serif;margin:auto 0 10px;padding-top:14px;white-space:nowrap}
+.kt .v small,.kpis .v small{font-size:14px;margin-right:5px;color:var(--mut)}
+.d{display:inline-block;font-size:12.5px;font-weight:500;padding:3px 11px;border-radius:99px;background:rgba(31,42,68,.08)}
+.d.pos{color:#2F6A47}
+.d.neg{color:#A6491C}
+.kt .s,.kpis .s{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.55}
+.pos{color:#2F6A47}
+.neg{color:#A6491C}
+.flat{color:var(--mut)}
+
+/* hero */
+.hero{--mut:#AEB9CE;background:var(--navy);border-color:var(--navy);color:#F8F3E9;padding:34px 36px 28px;display:flex;flex-direction:column}
+.hero .hl{font-size:13px;letter-spacing:.2em;color:#F4E8B8;font-weight:500}
+.hero .hv{font:400 76px/1.04 'DM Serif Display','Noto Serif SC',serif;margin:14px 0 14px;word-break:break-all}
+.hero .hv small{font-size:28px;color:#AEB9CE;margin-right:8px}
+.hero .d{background:rgba(244,232,184,.14)}
+.hero .d.pos{color:#C9EAD5}
+.hero .d.neg{color:#FFD2B8}
+.hero .hs{font-size:13px;color:#AEB9CE;margin-left:10px}
+.hero .readout{margin:26px 0 16px;color:#AEB9CE}
+.hero .readout b{color:#F8F3E9}
+.hero .readout b.pos{color:#C9EAD5}
+.hero .readout b.neg{color:#FFD2B8}
+.hero .gl{border-top-color:rgba(255,255,255,.12)}
+.hero .gl span{color:#AEB9CE}
+.hero .nline{stroke:#F4E8B8}
+.hero .narea{fill:rgba(244,232,184,.22)}
+.hero .guide{background:rgba(255,255,255,.28)}
+.hero .cursor{background:var(--navy);border-color:#F4E8B8;box-shadow:0 0 0 6px rgba(244,232,184,.16)}
+.hero .pt i{background:rgba(244,232,184,.55)}
+.hero .xl span{color:#AEB9CE}
+
+.readout{display:flex;flex-wrap:wrap;gap:6px 24px;font-size:13px;margin:2px 0 18px;color:var(--mut)}
+.readout b{font-weight:500;color:var(--ink);font-size:14px}
+.plot{position:relative}
+.gl{position:absolute;left:0;right:0;border-top:1px dashed #E6DBC3;height:0;z-index:0}
+.gl span{position:absolute;left:-58px;top:-9px;width:50px;text-align:right;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nbox{padding-left:58px}
+.nwplot{aspect-ratio:600/220;width:100%}
+.layer{position:absolute;left:0;top:0;width:100%;height:100%}
+.areamask{-webkit-mask-image:linear-gradient(to bottom,#000 5%,transparent 96%);mask-image:linear-gradient(to bottom,#000 5%,transparent 96%);z-index:1}
+.linelayer{z-index:2}
+.nsvg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
+.nline{fill:none;stroke:#1F2A44;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.narea{fill:rgba(31,42,68,.12);stroke:none}
+.guide{position:absolute;top:0;bottom:0;width:1px;margin-left:-.5px;background:#CFC3A8;z-index:3;transition:left .55s cubic-bezier(.3,.9,.2,1);pointer-events:none}
+.cursor{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--paper);border:3px solid var(--navy);z-index:4;pointer-events:none;transition:left .55s cubic-bezier(.3,.9,.2,1),top .55s cubic-bezier(.3,.9,.2,1)}
+.pt{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border:0;background:transparent;padding:0;cursor:pointer;border-radius:50%;z-index:5}
+.pt i{display:block;width:5px;height:5px;margin:auto;border-radius:50%;background:rgba(31,42,68,.4);transition:transform .3s ease}
+.pt:hover i{transform:scale(1.8)}
+.xl{position:relative;height:24px;margin-top:10px}
+.xl span{position:absolute;transform:translateX(-50%);font-size:11.5px;color:var(--mut);white-space:nowrap}
+.scroll{overflow-x:auto}
+.barscroll{overflow-x:auto;padding-top:10px}
+.barwrap{min-width:440px}
+.bars{position:absolute;left:0;right:0;top:0;display:flex;gap:4px;z-index:1;justify-content:space-evenly}
+.barcol{flex:1 1 0;max-width:72px;min-width:0;border:0;background:transparent;padding:0;display:flex;flex-direction:column;cursor:pointer;border-radius:99px;transition:background .35s ease}
+.barcol:hover,.barcol.on{background:#F6EFDD}
+.pair{height:180px;display:flex;align-items:flex-end;justify-content:center;gap:4px;padding-bottom:6px}
+.bar{width:34%;max-width:13px;min-height:6px;border-radius:99px;transition:height .8s cubic-bezier(.2,.9,.2,1),opacity .3s ease}
+.bar.i{background:var(--green)}
+.bar.o{background:var(--terra)}
+.bars:hover .barcol:not(:hover) .bar{opacity:.45}
+.ml{height:24px;line-height:24px;font-size:11.5px;color:var(--mut)}
+.barcol.on .ml{color:var(--ink);font-weight:700}
+.key{display:flex;gap:16px;font-size:12.5px;color:var(--mut);flex-wrap:wrap}
+.key i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+.cat{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.cat:last-child{margin-bottom:0}
+.cat .t{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--ink)}
+.cat .t span:last-child{font-variant-numeric:tabular-nums;color:var(--mut)}
+.track{position:relative;height:10px;border-radius:99px;background:rgba(31,42,68,.09)}
+.fill{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.9,.2,1)}
+.tick{position:absolute;top:-5px;bottom:-5px;width:3px;margin-left:-1px;background:var(--ink);border-radius:2px;transition:left .6s ease}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;font-weight:500;color:var(--mut);font-size:12px;padding:0 12px 12px;border-bottom:1px solid var(--line);white-space:nowrap;letter-spacing:.05em}
+.tbl td{padding:15px 12px;border-bottom:1px solid #F1E9D6;vertical-align:middle;color:var(--ink);transition:background .3s ease}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:#FBF6EA}
+.r{text-align:right}
+.tbl th.r{text-align:right}
+.nm2{font-weight:500}
+.cd{font-size:12px;color:var(--mut)}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:3px 12px;border-radius:99px;background:#F1EAD8;font-size:12px;color:#4A5468;white-space:nowrap}
+.dotc{width:9px;height:9px;border-radius:50%;flex:none}
+.fchips{display:flex;flex-wrap:wrap;gap:8px}
+.fchip{min-height:38px;padding:0 16px;border-radius:99px;border:1px solid #DDD2B9;background:var(--paper);font:500 13px 'Noto Sans SC',sans-serif;color:var(--mut);cursor:pointer;transition:background .3s ease,color .3s ease,border-color .3s ease,transform .25s ease}
+.fchip:hover{color:var(--ink);border-color:#B9AD90}
+.fchip:active{transform:scale(.96)}
+.fchip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#F8F3E9}
+
+/* allocation mosaic */
+.focusline{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0 0 16px;font-size:13px;color:var(--mut)}
+.focusline b{font:400 26px/1.2 'DM Serif Display','Noto Serif SC',serif;color:var(--ink);font-weight:400}
+.focusline .fn{font-weight:500;color:var(--ink);font-size:14px}
+.mosaic{display:flex;flex-wrap:wrap;gap:10px}
+.mt{border:0;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;min-height:104px;min-width:0;cursor:pointer;text-align:left;color:var(--ink);font-family:'Noto Sans SC',sans-serif;transition:transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s ease,box-shadow .4s ease}
+.mosaic.big .mt{min-height:150px}
+.mt:hover{transform:translateY(-3px)}
+.mt.dim{opacity:.38}
+.mt.on{box-shadow:0 0 0 2px var(--navy)}
+.mt .mn{font-size:13px;font-weight:500}
+.mt .mp{font:400 30px/1.1 'DM Serif Display',serif;margin-top:6px}
+.mt .mv{font-size:12px;color:#3C4760;margin-top:6px;font-variant-numeric:tabular-nums}
+
+.rb{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:18px 0;border-bottom:1px solid #F1E9D6}
+.rb:last-child{border-bottom:0}
+.rb .n{flex:0 0 130px;display:flex;align-items:center;gap:9px;font-weight:500;font-size:14px}
+.rb .tk{flex:1 1 180px;min-width:150px}
+.rb .p{flex:0 0 118px;font-size:12.5px;color:var(--mut);line-height:1.6;font-variant-numeric:tabular-nums}
+.rb .adv{flex:0 0 230px;font-size:13px;line-height:1.6}
+.st{display:inline-block;padding:2px 11px;border-radius:99px;font-size:12px;font-weight:500;margin-right:6px}
+.st.over{background:#F6DEC4;color:#8A3E14}
+.st.under{background:#D4E2EE;color:#24476B}
+.st.ok{background:#D7E3CF;color:#2A5A3A}
+.stack{display:flex;height:18px;border-radius:99px;overflow:hidden;gap:4px;margin:10px 0 14px}
+.stack div{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.9,.2,1)}
+.mini{font-size:13px;color:var(--mut);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.mini b{color:var(--ink);font-weight:500}
+.lia{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid rgba(31,42,68,.12);align-items:flex-start}
+.lia:last-child{border-bottom:0}
+.pnlr{display:flex;align-items:center;gap:14px;margin-bottom:15px;font-size:13.5px}
+.pnlr .nn{flex:0 0 130px;min-width:0}
+.pnlr .tt{flex:1;height:10px;border-radius:99px;background:rgba(31,42,68,.09);overflow:hidden}
+.pnlr .tt div{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.9,.2,1)}
+.pnlr .vv{flex:0 0 112px;text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.link{border:0;background:transparent;color:#2F5E9E;font:500 13px 'Noto Sans SC',sans-serif;cursor:pointer;min-height:36px;padding:0 10px;border-radius:99px;transition:background .3s ease,transform .3s ease}
+.link:hover{background:#E6EEF8;transform:translateX(3px)}
+.foot{font-size:12px;color:var(--mut);line-height:1.8;max-width:900px}
+
+/* currency */
+.cv{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.cv .fld.cur{flex:1 1 150px}
+.swap{width:50px;height:50px;border-radius:50%;border:1px solid #DDD2B9;background:var(--paper);color:var(--mut);cursor:pointer;display:grid;place-items:center;flex:none;transition:transform .55s cubic-bezier(.3,.9,.2,1),background .3s ease,color .3s ease}
+.swap:hover{background:var(--navy);color:#F8F3E9;transform:rotate(180deg)}
+.res{margin:22px 0 6px;padding:26px 28px;border-radius:24px;background:var(--navy);color:#F8F3E9}
+.res .rl{font-size:13px;color:#AEB9CE}
+.res .rv{font:400 54px/1.1 'DM Serif Display','Noto Serif SC',serif;margin:10px 0;word-break:break-all}
+.res .rs{font-size:12.5px;color:#AEB9CE}
+.rate-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(31,42,68,.12)}
+.rate-row:last-of-type{border-bottom:0}
+.rate-row .nm{flex:1;min-width:0;font-size:14px;font-weight:500}
+.rate-row .nm small{display:block;color:var(--mut);font-size:12px;font-weight:400}
+.rate-row .inp{width:128px;height:44px;text-align:right;font-variant-numeric:tabular-nums;border-radius:14px}
+.reset{margin-top:14px}
+@media (max-width:900px){
+.titlebar h1{font-size:44px}
+.hero .hv{font-size:56px}
+.res .rv{font-size:38px}
+.tb{font-size:13px}
+}
+@media (max-width:560px){
+.kgrid{grid-template-columns:minmax(0,1fr)}
+.tile{padding:22px 20px}
+.hero{padding:26px 22px 22px}
+.hero .hv{font-size:44px}
+.skipm{display:none}
+.tools{flex-wrap:wrap}
+}
+.ctrl{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;justify-content:flex-end}
+.seg.s3{grid-template-columns:1fr 1fr 1fr}
+.seg.s3 .segpill{width:calc(33.333% - 2.67px);transform:translateX(calc(var(--sx)*100%))}
+.dates{display:flex;gap:10px}
+.inp.dt{width:156px;height:48px;border-radius:99px;padding:0 14px;font-size:14px}
+.addbar{display:flex;align-items:center;gap:14px;margin-top:-12px}
+.addbtn{font-weight:600}
+.flash{font-size:13px;color:var(--pos,#4E7F63);animation:fl .5s ease both}
+@keyframes fl{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.addform{display:flex;flex-direction:column;gap:16px;animation:fl .45s ease both}
+.frow{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end}
+.frow .inp{height:48px;border-radius:99px;padding:0 16px;font-size:15px}
+.frow .fld{min-width:120px}
+.tog.solid{background:var(--navy);border-color:var(--navy);color:#F8F3E9}
+.ferr{color:#B5532A;font-size:13px}
+.del{margin-left:10px;border:0;background:transparent;color:#B5532A;font:500 12px 'Noto Sans SC',sans-serif;cursor:pointer;padding:4px 6px;border-radius:8px}
+.del:hover{background:#F2D5CE}
+.addbar{flex-wrap:wrap}
+.tag{font-size:12.5px;padding:7px 14px;border-radius:99px;font-weight:600}
+.tag.demo{background:#F4E8B8;color:#7A5F12}
+.tag.mine{background:#D7E3CF;color:#2F5A42}
+.hint{margin:0;font-size:13px;line-height:1.7;color:var(--mut)}
+.imptxt{width:100%;box-sizing:border-box;border:1px solid #DDD2B9;border-radius:18px;background:#fff;padding:14px 16px;font:400 13.5px/1.7 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);resize:vertical;min-height:150px;transition:border-color .25s ease,box-shadow .25s ease}
+.imptxt:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(31,42,68,.12);outline:none}
+.inp.file{height:48px;padding:7px 12px;border-radius:99px;font-size:13px;line-height:32px;cursor:pointer}
+.imsg{font-size:13px}
+.imsg.ok{color:#4E7F63}
+.imsg.err{color:#B5532A}
+</style>
+</helmet>
+
+<div class="app {{appCls}}">
+
+<header class="top">
+<div class="brand">
+<div class="mark">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4E8B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16"/><path d="M6 20h12"/><path d="M4 8h16"/><path d="M4 8l-2.2 6a3.2 3.2 0 0 0 4.4 0z"/><path d="M20 8l-2.2 6a3.2 3.2 0 0 0 4.4 0z"/></svg>
+</div>
+<div>
+<div class="brandname">持衡</div>
+<div class="brandsub">个人资产管理</div>
+</div>
+</div>
+<nav class="tabs" aria-label="主导航" style="--i: {{navIdx}}">
+<div class="tabpill"></div>
+<button class="tb" aria-current="{{cur.ov}}" onClick="{{goOv}}">总览</button>
+<button class="tb" aria-current="{{cur.flow}}" onClick="{{goFlow}}">收支分析</button>
+<button class="tb" aria-current="{{cur.alloc}}" onClick="{{goAlloc}}">资产配置</button>
+<button class="tb" aria-current="{{cur.assets}}" onClick="{{goAssets}}">资产明细</button>
+<button class="tb" aria-current="{{cur.fx}}" onClick="{{goFx}}">货币换算</button>
+</nav>
+<div class="tools">
+<label class="fld">显示币种
+<select class="sel" value="{{disp}}" onChange="{{setDisp}}">
+<sc-for list="{{dispOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<button class="tog" aria-pressed="{{hide}}" onClick="{{toggleHide}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+{{hideLabel}}
+</button>
+</div>
+</header>
+
+<main style="display:flex;flex-direction:column;gap:30px">
+
+<div class="titlebar">
+<div>
+<div class="eyebrow">{{todayText}}</div>
+<h1>{{title}}</h1>
+<p class="lede">{{lede}}</p>
+</div>
+<sc-if value="{{showRange}}" hint-placeholder-val="{{ true }}">
+<div class="ctrl">
+<div class="seg s3" role="group" aria-label="时间粒度" style="--sx: {{granX}}">
+<div class="segpill"></div>
+<button aria-pressed="{{isDay}}" onClick="{{setDay}}">按日</button>
+<button aria-pressed="{{isWeek}}" onClick="{{setWeek}}">按周</button>
+<button aria-pressed="{{isMonth}}" onClick="{{setMonth}}">按月</button>
+</div>
+<label class="fld">时间范围
+<select class="sel" value="{{preset}}" onChange="{{setPreset}}">
+<sc-for list="{{presetOpts}}" as="o" hint-placeholder-count="5">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<sc-if value="{{showCustom}}" hint-placeholder-val="{{ false }}">
+<div class="dates">
+<label class="fld">起
+<input class="inp dt" type="date" min="{{dMin}}" max="{{dMax}}" value="{{cStart}}" onChange="{{setCStart}}">
+</label>
+<label class="fld">止
+<input class="inp dt" type="date" min="{{dMin}}" max="{{dMax}}" value="{{cEnd}}" onChange="{{setCEnd}}">
+</label>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+
+<div class="addbar">
+<button class="tog addbtn" aria-pressed="{{adding}}" onClick="{{toggleAdd}}">{{addLabel}}</button>
+<button class="tog addbtn" aria-pressed="{{showImport}}" onClick="{{toggleImport}}">{{importLabel}}</button>
+<span class="{{tagCls}}">当前：{{dataTag}}</span>
+<button class="tog" onClick="{{toggleSample}}">{{sampleLabel}}</button>
+<sc-if value="{{hasFlash}}" hint-placeholder-val="{{ false }}"><span class="flash">{{flash}}</span></sc-if>
+</div>
+
+<sc-if value="{{showImport}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper addform" aria-label="导入数据">
+<div class="ch"><h3>导入我的数据</h3><span class="sub">支持 CSV（Excel 里「另存为 CSV」即可），也可以直接粘贴；数据只保存在本机浏览器</span></div>
+<div class="frow">
+<div class="seg s3" role="group" aria-label="导入类型" style="--sx: {{impModeX}}">
+<div class="segpill"></div>
+<button aria-pressed="{{impTx}}" onClick="{{setImpTx}}">收支流水</button>
+<button aria-pressed="{{impHold}}" onClick="{{setImpHold}}">资产持仓</button>
+<button aria-pressed="{{impLiab}}" onClick="{{setImpLiab}}">负债</button>
+</div>
+<label class="fld">文件中金额的币种
+<select class="sel" value="{{impCur}}" onChange="{{setImpCur}}">
+<sc-for list="{{impCurOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<label class="fld grow">选择 CSV 文件
+<input class="inp file" type="file" accept=".csv,.tsv,.txt,text/csv" onChange="{{onFile}}">
+</label>
+</div>
+<p class="hint">{{impHint}}</p>
+<textarea class="imptxt" rows="8" spellcheck="false" placeholder="在这里粘贴表格内容，第一行写表头" value="{{impText}}" onChange="{{setImpText}}"></textarea>
+<div class="frow">
+<button class="tog solid" onClick="{{doImport}}">导入</button>
+<button class="tog" onClick="{{fillExample}}">填入示例</button>
+<sc-if value="{{canClear}}" hint-placeholder-val="{{ false }}"><button class="tog" onClick="{{clearMine}}">{{clearLabel}}</button></sc-if>
+<sc-if value="{{hasImpMsg}}" hint-placeholder-val="{{ false }}"><span class="{{impMsgCls}}">{{impMsg}}</span></sc-if>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{adding}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper addform" aria-label="记一笔">
+<div class="ch"><h3>记一笔</h3><span class="sub">金额按当前显示币种输入，保存在本机浏览器</span></div>
+<div class="frow">
+<div class="seg" role="group" aria-label="收支类型" style="--sx: {{typeX}}">
+<div class="segpill"></div>
+<button aria-pressed="{{isOut}}" onClick="{{setOut}}">支出</button>
+<button aria-pressed="{{isIn}}" onClick="{{setIn}}">收入</button>
+</div>
+<label class="fld">日期
+<input class="inp dt" type="date" min="{{dMin}}" max="{{dMax}}" value="{{fDate}}" onChange="{{setFDate}}">
+</label>
+<label class="fld">金额
+<input class="inp num" inputmode="decimal" placeholder="0" value="{{fAmt}}" onChange="{{setFAmt}}">
+</label>
+<label class="fld">类别
+<select class="sel" value="{{fCat}}" onChange="{{setFCat}}">
+<sc-for list="{{catOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<label class="fld">账户
+<select class="sel" value="{{fAcct}}" onChange="{{setFAcct}}">
+<sc-for list="{{acctOpts}}" as="o" hint-placeholder-count="5">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<label class="fld grow">备注
+<input class="inp" placeholder="例如：午餐" value="{{fDesc}}" onChange="{{setFDesc}}">
+</label>
+</div>
+<div class="frow">
+<button class="tog solid" onClick="{{saveTx}}">保存</button>
+<button class="tog" onClick="{{cancelTx}}">取消</button>
+<span class="ferr">{{fErr}}</span>
+</div>
+</section>
+</sc-if>
+
+<div class="stage {{stageCls}}">
+
+<sc-if value="{{showKpis}}" hint-placeholder-val="{{ false }}">
+<div class="kpis">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div class="{{k.cls}}">
+<div class="l">{{k.label}}</div>
+<div class="v m"><small>{{k.cur}}</small>{{k.num}}</div>
+<div>
+<sc-if value="{{k.hasDelta}}" hint-placeholder-val="{{ false }}">
+<span class="d m {{k.tone}}">{{k.delta}}</span>
+</sc-if>
+</div>
+<div class="s m">{{k.sub}}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<div class="row">
+
+<sc-if value="{{showHero}}" hint-placeholder-val="{{ true }}">
+<section class="tile hero w2" aria-label="净资产">
+<div class="hl">净资产</div>
+<div class="hv m"><small>{{heroCur}}</small>{{heroNum}}</div>
+<div><span class="d m {{heroTone}}">{{heroDelta}}</span><span class="hs m">{{heroSub}}</span></div>
+<div class="readout"><span>{{hnMonth}}</span><span>净资产 <b class="num m">{{hnValue}}</b></span><span>{{prevWord}} <b class="num m {{hnTone}}">{{hnDelta}}</b></span></div>
+<div class="nbox">
+<div class="plot nwplot">
+<sc-for list="{{nwTicks}}" as="t" hint-placeholder-count="4">
+<div class="gl" style="top: {{t.y}}%"><span class="m">{{t.label}}</span></div>
+</sc-for>
+<div class="layer areamask"><div class="layer draw"><svg class="nsvg" viewBox="0 0 600 220" role="img" aria-label="净资产面积图"><path class="narea" d="{{nwArea}}"/></svg></div></div>
+<div class="layer linelayer"><div class="layer draw"><svg class="nsvg" viewBox="0 0 600 220" role="img" aria-label="净资产曲线"><path class="nline" d="{{nwLine}}"/></svg></div></div>
+<div class="guide" style="left: {{curLeft}}%"></div>
+<div class="cursor" style="left: {{curLeft}}%; top: {{curTop}}%"></div>
+<sc-for list="{{nwPts}}" as="p" hint-placeholder-count="12">
+<button class="pt" style="left: {{p.left}}%; top: {{p.top}}%" aria-label="{{p.aria}}" onMouseEnter="{{p.enter}}" onFocus="{{p.enter}}" onClick="{{p.enter}}"><i></i></button>
+</sc-for>
+</div>
+<div class="xl">
+<sc-for list="{{nwX}}" as="x" hint-placeholder-count="12">
+<span class="{{x.cls}}" style="left: {{x.left}}%">{{x.text}}</span>
+</sc-for>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showKgrid}}" hint-placeholder-val="{{ true }}">
+<div class="kgrid">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div class="{{k.cls}}">
+<div class="l">{{k.label}}</div>
+<div class="v m"><small>{{k.cur}}</small>{{k.num}}</div>
+<div class="s m">{{k.sub}}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{showBrkTop}}" hint-placeholder-val="{{ true }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showBars}}" hint-placeholder-val="{{ true }}">
+<section class="tile paper w2" aria-label="收支变化">
+<div class="ch">
+<h3>收支变化</h3>
+<div class="key"><span><i style="background:#4E7F63"></i>收入</span><span><i style="background:#D4733F"></i>支出</span></div>
+</div>
+<div class="readout"><span>{{hfMonth}}</span><span>收入 <b class="num m">{{hfInc}}</b></span><span>支出 <b class="num m">{{hfExp}}</b></span><span>结余 <b class="num m {{hfTone}}">{{hfNet}}</b></span></div>
+<div class="barscroll">
+<div class="barwrap nbox" style="min-width: {{barMin}}px">
+<div class="plot" style="height: 204px">
+<div style="position:absolute;left:0;right:0;top:0;height:180px">
+<sc-for list="{{flowTicks}}" as="t" hint-placeholder-count="5">
+<div class="gl" style="top: {{t.y}}%"><span class="m">{{t.label}}</span></div>
+</sc-for>
+</div>
+<div class="bars" style="height: 204px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="12">
+<button class="{{b.cls}}" aria-label="{{b.aria}}" onMouseEnter="{{b.enter}}" onFocus="{{b.enter}}" onClick="{{b.enter}}">
+<div class="pair" style="--d: {{b.i}}"><div class="bar i" style="height: {{b.hi}}%"></div><div class="bar o" style="height: {{b.he}}%"></div></div>
+<div class="ml">{{b.label}}</div>
+</button>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showMosaic}}" hint-placeholder-val="{{ true }}">
+<section class="tile paper {{mosaicWidth}}" aria-label="资产配置">
+<div class="ch">
+<h3>资产配置</h3>
+<span class="sub">点击色块可聚焦</span>
+</div>
+<div class="focusline"><span class="fn">{{dLabel}}</span><b class="m">{{dValue}}</b><span>{{dSub}}</span></div>
+<div class="mosaic {{mosaicCls}}">
+<sc-for list="{{legend}}" as="c" hint-placeholder-count="6">
+<button class="{{c.cls}}" style="flex: {{c.grow}} 1 {{c.basis}}px; background: {{c.bg}}; --d: {{c.i}}" aria-pressed="{{c.on}}" onClick="{{c.pick}}">
+<span class="mn">{{c.name}}</span>
+<span><span class="mp">{{c.pctText}}</span><br><span class="mv m">{{c.valueText}}</span></span>
+</button>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkMid}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showCats}}" hint-placeholder-val="{{ true }}">
+<section class="tile apricot w1" aria-label="支出结构">
+<div class="ch">
+<h3>支出结构</h3>
+<span class="sub">{{catSub}}</span>
+</div>
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="6">
+<div class="cat">
+<div class="t"><span>{{c.name}}</span><span class="m">{{c.amount}} · {{c.share}}</span></div>
+<div class="track"><div class="fill" style="width: {{c.w}}%; background: #D4733F"></div></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkCats}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showInc}}" hint-placeholder-val="{{ false }}">
+<section class="tile sage w1" aria-label="收入来源">
+<div class="ch">
+<h3>收入来源</h3>
+<span class="sub">{{incSub}}</span>
+</div>
+<sc-for list="{{incs}}" as="c" hint-placeholder-count="5">
+<div class="cat">
+<div class="t"><span>{{c.name}}</span><span class="m">{{c.amount}} · {{c.share}}</span></div>
+<div class="track"><div class="fill" style="width: {{c.w}}%; background: #4E7F63"></div></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showTx}}" hint-placeholder-val="{{ true }}">
+<section class="tile paper {{txCls}}" aria-label="收支流水">
+<div class="ch">
+<h3>{{txTitle}}</h3>
+<sc-if value="{{showTxFilter}}" hint-placeholder-val="{{ false }}">
+<div class="fchips" role="group" aria-label="流水类型">
+<sc-for list="{{txFilters}}" as="f" hint-placeholder-count="3">
+<button class="fchip" aria-pressed="{{f.on}}" onClick="{{f.pick}}">{{f.label}} {{f.count}}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{showTxAll}}" hint-placeholder-val="{{ true }}">
+<button class="link" onClick="{{goFlow}}">查看全部 →</button>
+</sc-if>
+</div>
+<div class="scroll">
+<table class="tbl" style="min-width: 560px">
+<thead><tr><th>日期</th><th>摘要</th><th>类别</th><th>账户</th><th class="r">金额</th></tr></thead>
+<tbody>
+<sc-for list="{{txs}}" as="t" hint-placeholder-count="6">
+<tr>
+<td class="num cd">{{t.date}}</td>
+<td class="nm2">{{t.desc}}<sc-if value="{{t.mine}}" hint-placeholder-val="{{ false }}"><button class="del" aria-label="删除这笔记录" onClick="{{t.del}}">删除</button></sc-if></td>
+<td><span class="chip">{{t.cat}}</span></td>
+<td class="cd">{{t.acct}}</td>
+<td class="r num m nm2 {{t.tone}}">{{t.amount}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showRebal}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper w2" aria-label="目标偏离与再平衡">
+<div class="ch">
+<h3>目标偏离与再平衡</h3>
+<span class="sub">黑色竖线为目标比例 · 偏离超过 2 个百分点提示调整</span>
+</div>
+<sc-for list="{{rebal}}" as="r" hint-placeholder-count="6">
+<div class="rb">
+<div class="n"><span class="dotc" style="background: {{r.color}}"></span>{{r.name}}</div>
+<div class="tk"><div class="track"><div class="fill" style="width: {{r.w}}%; background: {{r.color}}"></div><div class="tick" style="left: {{r.tickLeft}}%"></div></div></div>
+<div class="p">实际 {{r.actual}}<br>目标 {{r.target}}</div>
+<div class="adv"><span class="st {{r.stCls}}">{{r.stText}}</span><span class="m">{{r.advice}}</span></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkRebal}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showRisk}}" hint-placeholder-val="{{ false }}">
+<section class="tile lilac wf" aria-label="风险结构">
+<div class="ch">
+<h3>风险结构</h3>
+<span class="sub">个股、基金与加密资产归为进取型；现金、债券、黄金归为防御型</span>
+</div>
+<div class="stack" role="img" aria-label="进取型与防御型占比">
+<div style="width: {{riskW}}%; background: #D4733F"></div>
+<div style="width: {{defW}}%; background: #1F2A44"></div>
+</div>
+<div class="mini"><span><b class="num">进取型 {{riskText}}</b>　<span class="m">{{riskAmt}}</span></span><span><b class="num">防御型 {{defText}}</b>　<span class="m">{{defAmt}}</span></span></div>
+</section>
+</sc-if>
+
+<sc-if value="{{showHold}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper wf" aria-label="持仓明细">
+<div class="ch">
+<h3>持仓与账户</h3>
+<div class="fchips" role="group" aria-label="按类别筛选">
+<sc-for list="{{holdFilters}}" as="f" hint-placeholder-count="7">
+<button class="fchip" aria-pressed="{{f.on}}" onClick="{{f.pick}}">{{f.label}} {{f.count}}</button>
+</sc-for>
+</div>
+</div>
+<div class="scroll">
+<table class="tbl" style="min-width: 720px">
+<thead><tr><th>名称</th><th>类别</th><th class="r">市值</th><th class="r">成本</th><th class="r">浮动盈亏</th><th class="r">收益率</th><th>占总资产</th></tr></thead>
+<tbody>
+<sc-for list="{{holds}}" as="h" hint-placeholder-count="8">
+<tr>
+<td><div class="nm2">{{h.name}}</div><div class="cd">{{h.code}}</div></td>
+<td><span class="chip"><span class="dotc" style="background: {{h.color}}"></span>{{h.clsName}}</span></td>
+<td class="r num m nm2">{{h.value}}</td>
+<td class="r num m cd">{{h.cost}}</td>
+<td class="r num m nm2 {{h.tone}}">{{h.pnl}}</td>
+<td class="r num nm2 {{h.tone}}">{{h.pnlPct}}</td>
+<td style="min-width:130px"><div style="display:flex;align-items:center;gap:10px"><div class="track" style="flex:1"><div class="fill" style="width: {{h.bar}}%; background: {{h.color}}"></div></div><span class="num cd" style="width:44px;text-align:right">{{h.weight}}</span></div></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showBrkHold}}" hint-placeholder-val="{{ false }}"><div class="brk"></div></sc-if>
+
+<sc-if value="{{showPnl}}" hint-placeholder-val="{{ false }}">
+<section class="tile butter w2" aria-label="盈亏贡献">
+<div class="ch">
+<h3>盈亏贡献</h3>
+<span class="sub">各持仓浮动盈亏，自高到低</span>
+</div>
+<sc-for list="{{pnls}}" as="p" hint-placeholder-count="8">
+<div class="pnlr">
+<div class="nn">{{p.name}}</div>
+<div class="tt"><div style="width: {{p.w}}%; background: {{p.color}}"></div></div>
+<div class="vv m {{p.tone}}">{{p.text}}</div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+<sc-if value="{{showLiab}}" hint-placeholder-val="{{ false }}">
+<section class="tile blush w1" aria-label="负债">
+<div class="ch">
+<h3>负债</h3>
+<span class="sub">负债率 {{liabRate}}</span>
+</div>
+<sc-for list="{{liabs}}" as="l" hint-placeholder-count="2">
+<div class="lia">
+<div><div class="nm2">{{l.name}}</div><div class="cd">{{l.note}}</div></div>
+<div class="num m nm2">{{l.balance}}</div>
+</div>
+</sc-for>
+<div class="lia" style="border-bottom:0;padding-bottom:0">
+<div class="nm2">负债合计</div>
+<div class="num m nm2 neg">{{liabTotal}}</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showFx}}" hint-placeholder-val="{{ false }}">
+<section class="tile paper w2" aria-label="货币换算器">
+<div class="ch">
+<h3>货币换算器</h3>
+<span class="sub">主流货币互换</span>
+</div>
+<div class="cv">
+<label class="fld grow">金额
+<input class="inp num" inputmode="decimal" value="{{cvAmt}}" onChange="{{setAmt}}">
+</label>
+<label class="fld cur">从
+<select class="sel" value="{{cvFrom}}" onChange="{{setFrom}}">
+<sc-for list="{{fxOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+<button class="swap" aria-label="互换两种货币" onClick="{{swapFx}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4L3 8l4 4"/><path d="M3 8h15"/><path d="M17 20l4-4-4-4"/><path d="M21 16H6"/></svg>
+</button>
+<label class="fld cur">换成
+<select class="sel" value="{{cvTo}}" onChange="{{setTo}}">
+<sc-for list="{{fxOpts}}" as="o" hint-placeholder-count="8">
+<option value="{{o.code}}">{{o.label}}</option>
+</sc-for>
+</select>
+</label>
+</div>
+<div class="res">
+<div class="rl">{{resLabel}}</div>
+<div class="rv">{{resValue}}</div>
+<div class="rs">{{resRate}}</div>
+</div>
+<div class="ch" style="margin:24px 0 6px"><h3>同一金额换成各币种</h3><span class="sub">{{quickSub}}</span></div>
+<div class="scroll">
+<table class="tbl" style="min-width: 420px">
+<thead><tr><th>币种</th><th class="r">金额</th><th class="r">汇率（1 {{cvFrom}} =）</th></tr></thead>
+<tbody>
+<sc-for list="{{quick}}" as="q" hint-placeholder-count="8">
+<tr>
+<td><span class="nm2">{{q.name}}</span> <span class="cd">{{q.code}}</span></td>
+<td class="r num nm2">{{q.value}}</td>
+<td class="r num cd">{{q.rate}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showFx}}" hint-placeholder-val="{{ false }}">
+<section class="tile sage w1" aria-label="汇率设置">
+<div class="ch">
+<h3>汇率设置</h3>
+<span class="sub">1 美元 =</span>
+</div>
+<p class="sub" style="margin:0 0 8px;line-height:1.7">以下为示例参考汇率，并非实时行情。可直接修改数值，换算器和全站金额会随之更新。</p>
+<sc-for list="{{rateRows}}" as="r" hint-placeholder-count="8">
+<div class="rate-row">
+<div class="nm">{{r.name}}<small>{{r.code}}</small></div>
+<input class="inp num" inputmode="decimal" aria-label="{{r.aria}}" value="{{r.val}}" disabled="{{r.fixed}}" onChange="{{r.edit}}">
+</div>
+</sc-for>
+<button class="fchip reset" onClick="{{resetRates}}">恢复示例汇率</button>
+</section>
+</sc-if>
+
+</div>
+</div>
+
+<div class="foot">数据截至今日；示例数据仅用于演示；汇率为示例参考值，非实时行情。收益率 = 浮动盈亏 ÷ 成本；储蓄率 = 结余 ÷ 收入；应急储备 = 现金与存款 ÷ 区间月均支出。账目以新台币记录，切换显示币种时按设置的汇率换算。</div>
+</main>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1800}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    const patch = {};
+    try {
+      const ld = (k) => { const r = window.localStorage.getItem(k); return r ? JSON.parse(r) : null; };
+      const a = ld('chiheng.userTxs.v1'); if (Array.isArray(a)) patch.user = a;
+      const h = ld('chiheng.userHold.v1'); if (Array.isArray(h)) patch.userHold = h;
+      const l = ld('chiheng.userLiab.v1'); if (Array.isArray(l)) patch.userLiab = l;
+      if (window.localStorage.getItem('chiheng.useSample.v1') === '0') patch.useSample = false;
+      const d = window.localStorage.getItem('chiheng.disp.v1'); if (d) patch.disp = d;
+    } catch (e) { /* storage unavailable: start empty */ }
+    if (Object.keys(patch).length) this.setState(patch);
+    this.kick();
+  }
+  componentWillUnmount() { if (this._raf) cancelAnimationFrame(this._raf); if (this._ft) clearTimeout(this._ft); }
+
+  // eases 0→1 so headline numbers count up on every view / range change
+  kick() {
+    if (this._raf) cancelAnimationFrame(this._raf);
+    const t0 = performance.now(), dur = 1200;
+    this.setState({ t: 0 });
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      this.setState({ t: 1 - Math.pow(1 - p, 4) });
+      if (p < 1) { this._raf = requestAnimationFrame(step); } else { this._raf = null; }
+    };
+    this._raf = requestAnimationFrame(step);
+  }
+
+  persist(arr) { this.save('chiheng.userTxs.v1', arr); }
+  save(key, val) {
+    try { window.localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val)); } catch (e) { /* ignore */ }
+  }
+
+  // ---------- CSV import helpers ----------
+  parseCSV(text) {
+    text = String(text).replace(/^\uFEFF/, '');
+    const first = text.split(/\r?\n/).find((l) => l.trim()) || '';
+    const cnt = (c) => first.split(c).length - 1;
+    const delim = cnt('\t') > 0 ? '\t' : (cnt(',') >= cnt(';') ? ',' : ';');
+    const rows = []; let row = [], cell = '', q = false;
+    const endRow = () => { row.push(cell); cell = ''; if (row.some((c) => c.trim() !== '')) rows.push(row.map((c) => c.trim())); row = []; };
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else { q = false; } } else { cell += ch; } }
+      else if (ch === '"') { q = true; }
+      else if (ch === delim) { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; endRow(); }
+      else { cell += ch; }
+    }
+    endRow();
+    return rows;
+  }
+  normDate(v) {
+    const t = String(v == null ? '' : v).trim();
+    let y, m, d, x;
+    if ((x = t.match(/^(\d{4})[-\/.年](\d{1,2})[-\/.月](\d{1,2})/))) { y = +x[1]; m = +x[2]; d = +x[3]; }
+    else if ((x = t.match(/^(\d{4})(\d{2})(\d{2})$/))) { y = +x[1]; m = +x[2]; d = +x[3]; }
+    else if ((x = t.match(/^(\d{2,3})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) { y = +x[1] + 1911; m = +x[2]; d = +x[3]; }
+    else if ((x = t.match(/^(\d{1,2})[\/](\d{1,2})[\/](\d{4})$/))) { y = +x[3]; m = +x[1]; d = +x[2]; }
+    else { return ''; }
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return '';
+    return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+  parseNum(v) {
+    const t = String(v == null ? '' : v).trim().replace(/[,，\s]/g, '');
+    if (!t) return NaN;
+    const neg = /^\(.*\)$/.test(t) || /^[^\d]*[-−–]/.test(t);
+    const n = parseFloat(t.replace(/[^\d.]/g, ''));
+    return isNaN(n) ? NaN : (neg ? -n : n);
+  }
+  clsOf(v) {
+    const t = String(v || '').toLowerCase();
+    if (/现金|現金|存款|存款|活期|定存|定期|储蓄|儲蓄|cash/.test(t)) return 'cash';
+    if (/基金|etf|fund/.test(t)) return 'fund';
+    if (/债|債|bond/.test(t)) return 'bond';
+    if (/黄金|黃金|gold|金条|金條/.test(t)) return 'gold';
+    if (/股|stock|equity/.test(t)) return 'stock';
+    return 'other';
+  }
+  headerKey(mode, h) {
+    const t = String(h || '').toLowerCase().replace(/\s/g, '');
+    if (mode === 'tx') {
+      if (/^(日期|date|交易日|交易日期|记账日期|記帳日期|日付|时间|時間)/.test(t)) return 'date';
+      if (/^(类型|類型|收支|方向|type)/.test(t)) return 'type';
+      if (/^(收入|存入|贷方|貸方|credit|income)/.test(t)) return 'inc';
+      if (/^(支出|提出|借方|debit|expense)/.test(t)) return 'exp';
+      if (/^(金额|金額|amount|交易金额|交易金額)/.test(t)) return 'amt';
+      if (/^(类别|類別|分类|分類|category)/.test(t)) return 'cat';
+      if (/^(账户|帳戶|账号|帳號|account|支付方式)/.test(t)) return 'acct';
+      if (/^(备注|備註|摘要|说明|說明|描述|商户|商家|note|memo|desc)/.test(t)) return 'desc';
+    } else if (mode === 'hold') {
+      if (/^(名称|名稱|name|品名|标的|標的)/.test(t)) return 'name';
+      if (/^(代码|代碼|code|ticker|symbol)/.test(t)) return 'code';
+      if (/^(类别|類別|资产类别|資產類別|class|type)/.test(t)) return 'cls';
+      if (/^(市值|现值|現值|value)/.test(t)) return 'value';
+      if (/^(成本|cost|本金)/.test(t)) return 'cost';
+    } else {
+      if (/^(名称|名稱|name)/.test(t)) return 'name';
+      if (/^(备注|備註|说明|說明|note)/.test(t)) return 'note';
+      if (/^(余额|餘額|balance|金额|金額|欠款)/.test(t)) return 'balance';
+    }
+    return '';
+  }
+  // returns { tx, hold, liab, bad, future } (amounts already converted to TWD by toTWD)
+  parseImport(text, mode, toTWD, todayN, minN, existing) {
+    const rows = this.parseCSV(text);
+    const out = { tx: [], hold: [], liab: [], bad: 0, future: 0, dup: 0, rows: 0 };
+    if (!rows.length) return out;
+    const defaults = { tx: ['date', 'amt', 'cat', 'acct', 'desc'], hold: ['name', 'code', 'cls', 'value', 'cost'], liab: ['name', 'note', 'balance'] };
+    const keys = rows[0].map((h) => this.headerKey(mode, h));
+    const hasHeader = keys.filter((x) => x).length >= 2;
+    const idx = {};
+    (hasHeader ? keys : defaults[mode]).forEach((k, i) => { if (k && idx[k] === undefined) idx[k] = i; });
+    const body = hasHeader ? rows.slice(1) : rows;
+    const get = (r, k) => (idx[k] === undefined ? '' : (r[idx[k]] || ''));
+    const seen = {};
+    (existing || []).forEach((u) => { seen[u.date + '|' + u.desc + '|' + u.amt + '|' + u.acct] = 1; });
+    out.rows = body.length;
+    body.forEach((r, i) => {
+      if (mode === 'tx') {
+        const date = this.normDate(get(r, 'date'));
+        if (!date) { out.bad++; return; }
+        const dn = this.dayNum(date);
+        if (dn < minN) { out.bad++; return; }
+        if (dn > todayN) { out.future++; return; }
+        let amt;
+        if (idx.amt !== undefined) {
+          const v = this.parseNum(get(r, 'amt'));
+          if (isNaN(v)) { out.bad++; return; }
+          const ty = get(r, 'type');
+          if (/支出|消费|消費|提|借|expense|out|debit/i.test(ty)) amt = -Math.abs(v);
+          else if (/收入|存|贷|貸|income|credit/i.test(ty)) amt = Math.abs(v);
+          else amt = v;
+        } else {
+          const a = this.parseNum(get(r, 'inc')), b = this.parseNum(get(r, 'exp'));
+          amt = (isNaN(a) ? 0 : Math.abs(a)) - (isNaN(b) ? 0 : Math.abs(b));
+        }
+        const twd = Math.round(toTWD(amt));
+        if (!twd) { out.bad++; return; }
+        const cat = get(r, 'cat') || (twd > 0 ? '其他收入' : '其他');
+        const rec = { id: 'u' + Date.now() + '_' + i, date, desc: get(r, 'desc') || cat, cat, acct: get(r, 'acct') || '导入', amt: twd };
+        const key = rec.date + '|' + rec.desc + '|' + rec.amt + '|' + rec.acct;
+        if (seen[key]) { out.dup++; return; }
+        seen[key] = 1; out.tx.push(rec);
+      } else if (mode === 'hold') {
+        const name = get(r, 'name'), v = this.parseNum(get(r, 'value'));
+        if (!name || isNaN(v)) { out.bad++; return; }
+        const c = this.parseNum(get(r, 'cost'));
+        out.hold.push({ name, code: get(r, 'code') || '导入', cls: this.clsOf(get(r, 'cls')), value: Math.round(toTWD(v)), cost: Math.round(toTWD(isNaN(c) ? v : c)) });
+      } else {
+        const name = get(r, 'name'), v = this.parseNum(get(r, 'balance'));
+        if (!name || isNaN(v) || v <= 0) { out.bad++; return; }
+        out.liab.push({ name, note: get(r, 'note') || '导入', balance: Math.round(toTWD(v)) });
+      }
+    });
+    return out;
+  }
+  decodeBytes(buf) {
+    const tryDec = (enc, fatal) => { try { return new TextDecoder(enc, { fatal: !!fatal }).decode(buf); } catch (e) { return null; } };
+    const u = tryDec('utf-8', true);
+    if (u !== null) return u;
+    const bad = (t) => (t.match(/\uFFFD/g) || []).length;
+    const b = tryDec('big5'), g = tryDec('gb18030');
+    if (b !== null && (g === null || bad(b) <= bad(g))) return b;
+    return g !== null ? g : tryDec('utf-8');
+  }
+
+  getData() {
+    return {
+      currencies: [
+        { code: 'TWD', name: '新台币', sym: 'NT$', perUSD: 31.5 },
+        { code: 'CNY', name: '人民币', sym: 'CN¥', perUSD: 7.1 },
+        { code: 'HKD', name: '港币',   sym: 'HK$', perUSD: 7.8 },
+        { code: 'USD', name: '美元',   sym: '$',   perUSD: 1 },
+        { code: 'EUR', name: '欧元',   sym: '€',   perUSD: 0.86 },
+        { code: 'JPY', name: '日元',   sym: 'JP¥', perUSD: 150 },
+        { code: 'GBP', name: '英镑',   sym: '£',   perUSD: 0.75 },
+        { code: 'AUD', name: '澳元',   sym: 'A$',  perUSD: 1.52 }
+      ],
+      classes: [
+        { id: 'cash',  name: '现金与存款', color: '#5B84B1', bg: '#C3D5E8', target: 20 },
+        { id: 'stock', name: '个股',       color: '#5C9A63', bg: '#C4DBBD', target: 22 },
+        { id: 'fund',  name: '基金与 ETF', color: '#E08A45', bg: '#F5CBA1', target: 30 },
+        { id: 'bond',  name: '债券',       color: '#9B7BC0', bg: '#D9CBE8', target: 14 },
+        { id: 'gold',  name: '黄金',       color: '#C9A227', bg: '#EFDD8F', target: 8 },
+        { id: 'other', name: '加密资产',   color: '#CF7F73', bg: '#EDC3BC', target: 6 }
+      ],
+      risky: ['stock','fund','other'],
+      holdings: [
+        { name: '玉山银行 活期存款', code: '活期账户', cls: 'cash',  value: 186000, cost: 186000 },
+        { name: '台新银行 定期存款', code: '一年期 · 固定利率', cls: 'cash',  value: 320000, cost: 320000 },
+        { name: '货币市场基金', code: '随时赎回', cls: 'cash',  value: 94000,  cost: 94000 },
+        { name: '台积电', code: '2330', cls: 'stock', value: 520000, cost: 410000 },
+        { name: '联发科', code: '2454', cls: 'stock', value: 168000, cost: 190000 },
+        { name: '元大台湾50', code: '0050 · ETF', cls: 'fund',  value: 432000, cost: 350000 },
+        { name: '全球股票 ETF', code: 'VT · ETF', cls: 'fund',  value: 356000, cost: 310000 },
+        { name: '美国公债 ETF', code: '长天期国债', cls: 'bond',  value: 285000, cost: 301000 },
+        { name: '投资级公司债基金', code: '债券基金', cls: 'bond',  value: 140000, cost: 136000 },
+        { name: '黄金存折', code: '黄金 · 公克', cls: 'gold',  value: 240000, cost: 205000 },
+        { name: '比特币', code: 'BTC', cls: 'other', value: 128000, cost: 90000 },
+        { name: '以太币', code: 'ETH', cls: 'other', value: 36000,  cost: 44000 }
+      ],
+      liabs: [
+        { name: '助学贷款', note: '年利率 1.15% · 按月摊还', balance: 210000 },
+        { name: '信用卡待缴', note: '下期账单日 11 月 5 日', balance: 18600 }
+      ],
+      expCats: ['餐饮', '住房', '学习', '购物', '交通', '娱乐', '医疗', '其他'],
+      incCats: ['助教薪资', '奖学金', '科研补助', '家教兼职', '投资收益', '其他收入'],
+      accts: ['玉山活期', '信用卡', '悠游卡', '券商账户', '现金']
+    };
+  }
+
+  // ---- dates are handled as whole-day numbers (UTC) so ranges, weeks and months stay exact
+  dayNum(str) { const p = str.split('-'); return Math.round(Date.UTC(+p[0], +p[1] - 1, +p[2]) / 864e5); }
+  dayStr(n) { return new Date(n * 864e5).toISOString().slice(0, 10); }
+  weekStart(n) { const dow = (new Date(n * 864e5).getUTCDay() + 6) % 7; return n - dow; }
+
+  // deterministic sample ledger: Nov 2025 – 29 Oct 2026
+  getSeed() {
+    if (this._seed) return this._seed;
+    let a = 20261029;
+    const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const r5 = (x) => Math.round(x / 5) * 5;
+    const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+    const out = [];
+    const months = [];
+    for (let i = 0; i < 12; i++) { const y = i < 2 ? 2025 : 2026; const m = i < 2 ? 11 + i : i - 1; months.push([y, m]); }
+    const extras = { '2025-11': [[18, '家教加课', '家教兼职', 1500]], '2026-01': [[15, '年终奖学金', '奖学金', 25500]], '2026-03': [[12, '现金股息 · 0050', '投资收益', 700]], '2026-05': [[20, '项目奖金', '科研补助', 5300]], '2026-07': [[8, '家教加课', '家教兼职', 2400]], '2026-09': [[12, '竞赛奖金', '奖学金', 7700]] };
+    months.forEach((ym) => {
+      const y = ym[0], m = ym[1], key = y + '-' + String(m).padStart(2, '0');
+      const dim = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      const last = (key === '2026-10') ? 29 : dim;
+      const add = (d, desc, cat, acct, amt) => { if (d >= 1 && d <= last) out.push({ date: key + '-' + String(d).padStart(2, '0'), desc, cat, acct, amt }); };
+      // income
+      add(1, '助教薪资', '助教薪资', '玉山活期', 22300);
+      add(5, '奖学金入账', '奖学金', '玉山活期', 20000);
+      add(10, '现金股息 · 台积电', '投资收益', '券商账户', 4200);
+      add(18, '家教课酬', '家教兼职', '玉山活期', 8000);
+      add(24, '科研补助入账', '科研补助', '玉山活期', 12000);
+      (extras[key] || []).forEach((e) => add(e[0], e[1], e[2], '玉山活期', e[3]));
+      // fixed costs
+      add(2, '手机月租', '其他', '信用卡', -599);
+      add(3, '水电瓦斯', '住房', '玉山活期', -r5(1650 + rnd() * 300));
+      add(15, '房租', '住房', '玉山活期', -12500);
+      add(25, '影音订阅', '娱乐', '信用卡', -390);
+      add(27, '捷运月票', '交通', '玉山活期', -1280);
+      // everyday spending
+      for (let d = 1; d <= last; d++) {
+        const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+        if (dow !== 0 && dow !== 6 && rnd() < 0.85) add(d, '午餐 · 学校餐厅', '餐饮', '悠游卡', -r5(110 + rnd() * 60));
+        if (rnd() < 0.5) add(d, pick(['晚餐 · 小吃店', '外送', '便当']), '餐饮', rnd() < 0.5 ? '悠游卡' : '信用卡', -r5(130 + rnd() * 140));
+        if (rnd() < 0.3) add(d, '咖啡', '餐饮', '悠游卡', -r5(145 + rnd() * 30));
+        if (dow === 0) add(d, '超市采买', '餐饮', '信用卡', -r5(1800 + rnd() * 1000));
+        if (rnd() < 0.06) add(d, '计程车', '交通', '现金', -r5(150 + rnd() * 250));
+        if (rnd() < 0.05) add(d, '电影', '娱乐', '信用卡', -330);
+      }
+      add(6 + Math.floor(rnd() * 20), '同学聚餐', '餐饮', '信用卡', -r5(800 + rnd() * 500));
+      add(6 + Math.floor(rnd() * 20), '朋友聚餐', '餐饮', '信用卡', -r5(900 + rnd() * 500));
+      add(4 + Math.floor(rnd() * 22), '专业书籍', '学习', '信用卡', -r5(900 + rnd() * 1300));
+      if (key === '2026-03' || key === '2026-09') add(9, '课程费用', '学习', '玉山活期', -3000);
+      add(5 + Math.floor(rnd() * 22), pick(['运动鞋', '衣物', '生活用品', '3C 配件']), '购物', '信用卡', -r5(900 + rnd() * 2600));
+      add(5 + Math.floor(rnd() * 22), pick(['生活用品', '衣物', '书桌灯']), '购物', '信用卡', -r5(500 + rnd() * 1800));
+      if (rnd() < 0.55) add(7 + Math.floor(rnd() * 20), pick(['门诊挂号', '牙科洗牙', '药局']), '医疗', '信用卡', -r5(350 + rnd() * 1400));
+      if (key === '2025-12' || key === '2026-01' || key === '2026-04' || key === '2026-07') add(20 + Math.floor(rnd() * 5), '高铁回家', '交通', '信用卡', -1490);
+    });
+    out.sort((p, q) => p.date < q.date ? -1 : (p.date > q.date ? 1 : 0));
+    out.forEach((t, i) => { t.id = 's' + i; t.dn = this.dayNum(t.date); });
+    this._seed = out;
+    return out;
+  }
+
+  renderVals() {
+    const D = this.getData();
+    const nowD = new Date();
+    const realToday = nowD.getFullYear() + '-' + String(nowD.getMonth() + 1).padStart(2, '0') + '-' + String(nowD.getDate()).padStart(2, '0');
+    const TODAY = realToday > '2026-10-29' ? realToday : '2026-10-29';
+    const s = Object.assign({ view: 'ov', gran: 'month', preset: 'm12', cStart: '2026-09-01', cEnd: TODAY, tx: 'all', cls: 'all', focus: 'all', hide: false, hf: null, hn: null, nav: 0, t: 1, limit: 12,
+      disp: 'CNY', rates: {}, cvAmt: '1000', cvFrom: 'USD', cvTo: 'CNY', user: [], userHold: [], userLiab: [], useSample: true, showImport: false, impMode: 'tx', impText: '', impCur: '', impMsg: '', impOk: true, confirmClear: false, adding: false, flash: '',
+      form: { type: 'out', date: TODAY, amt: '', cat: '餐饮', acct: '玉山活期', desc: '' }, formErr: '' }, this.state || {});
+    const useSample = s.useSample !== false;
+    const set = (o) => () => this.setState(o);
+    const go = (o) => () => { this.setState(Object.assign({ nav: s.nav + 1, hf: null, hn: null, limit: 12 }, o)); this.kick(); };
+    const sum = (a) => a.reduce((x, y) => x + y, 0);
+    const T = s.t;
+
+    // ---- currencies: amounts are stored in TWD and shown in the chosen currency
+    const byCode = {};
+    D.currencies.forEach((c) => { byCode[c.code] = c; });
+    const perUSD = (code) => { const v = parseFloat(s.rates[code]); return v > 0 ? v : byCode[code].perUSD; };
+    const disp = byCode[s.disp] ? s.disp : 'CNY';
+    const sym = byCode[disp].sym;
+    const fx = perUSD(disp) / perUSD('TWD');
+    const cv = (n) => n * fx;
+    const decFor = (code, a) => (code === 'JPY' || code === 'TWD') ? 0 : (a < 1000 ? 2 : 0);
+    const numC = (x, code) => { const d = decFor(code, Math.abs(x)); return x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+    const num = (twd) => numC(cv(twd), disp);
+    const fmt = (twd) => sym + num(twd);
+    const sgn = (twd) => (twd < 0 ? '−' : '+') + sym + num(Math.abs(twd));
+    const wan = (twd) => { const v = cv(twd) / 10000; return (v >= 100 ? String(Math.round(v)) : String(+v.toFixed(1))) + '万'; };
+    const axis = (twd) => { const v = Math.abs(cv(twd)); if (v >= 10000) return wan(twd); if (v >= 1000) return String(+(v / 1000).toFixed(1)) + '千'; return String(Math.round(v)); };
+    const pc = (n, d) => n.toFixed(d === undefined ? 1 : d) + '%';
+    const spc = (n) => (n < 0 ? '−' : '+') + Math.abs(n).toFixed(1) + '%';
+    const tone = (n) => n > 0 ? 'pos' : (n < 0 ? 'neg' : 'flat');
+    const view = s.view;
+
+    // ---- the ledger: sample data + entries the user has added
+    const seedTxs = useSample ? this.getSeed() : [];
+    const todayN = this.dayNum(TODAY), minN = this.dayNum('2015-01-01');
+    const userTxs = (s.user || []).map((u) => Object.assign({}, u, { user: true, dn: this.dayNum(u.date) })).filter((u) => u.dn >= minN && u.dn <= todayN);
+    let dayStart = useSample ? this.dayNum('2025-11-01') : todayN - 364;
+    userTxs.forEach((u) => { if (u.dn < dayStart) dayStart = u.dn; });
+    const N = todayN - dayStart + 1;
+    const allTxs = seedTxs.concat(userTxs);
+    const incD = new Array(N).fill(0), expD = new Array(N).fill(0);
+    allTxs.forEach((t) => { const i = t.dn - dayStart; if (t.amt > 0) incD[i] += t.amt; else expD[i] += -t.amt; });
+    const incPre = [0], expPre = [0], netPre = [0], gainPre = [0];
+    const seedNet = sum(seedTxs.map((t) => t.amt));
+    const userNet = sum(userTxs.map((t) => t.amt));
+    const gainTarget = useSample ? 58400 : 0, gw = [1, 1.2, 0.6, 1.5, 0.4, 0.8, 1.6, -0.8, 1.4, 2, 1.1, 1.0], gws = sum(gw);
+    for (let i = 0; i < N; i++) {
+      const d = new Date((dayStart + i) * 864e5);
+      const mi = (d.getUTCFullYear() - 2025) * 12 + d.getUTCMonth() - 10;
+      const dim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+      const dayGain = gainTarget * gw[Math.max(0, Math.min(11, mi))] / gws / dim;
+      incPre.push(incPre[i] + incD[i]); expPre.push(expPre[i] + expD[i]);
+      netPre.push(netPre[i] + incD[i] - expD[i]); gainPre.push(gainPre[i] + dayGain);
+    }
+    const rangeSum = (pre, a, b) => pre[b - dayStart + 1] - pre[a - dayStart];
+
+    // ---- holdings & classes (manual entries are added to cash)
+    const H = (useSample ? D.holdings : []).map((h) => Object.assign({}, h, { pnl: h.value - h.cost }));
+    (s.userHold || []).forEach((h) => { H.push(Object.assign({}, h, { pnl: h.value - h.cost })); });
+    const seedAssets = sum(H.map((h) => h.value));
+    const liabList = (useSample ? D.liabs : []).concat(s.userLiab || []);
+    const liab = sum(liabList.map((l) => l.balance));
+    if (userNet !== 0) H.push({ name: '记账结余（手动记录）', code: '来自「记一笔」', cls: 'cash', value: userNet, cost: userNet, pnl: 0 });
+    const assets = sum(H.map((h) => h.value));
+    const A = assets > 0 ? assets : 1;
+    const costAll = sum(H.map((h) => h.cost));
+    const nwNow = assets - liab;
+    const nw0 = (seedAssets - liab) - seedNet - gainTarget;
+    const nwAt = (dn) => (dn < dayStart ? nw0 : nw0 + netPre[dn - dayStart + 1] + gainPre[dn - dayStart + 1]);
+    const clsById = {};
+    const C = D.classes.map((c) => {
+      const list = H.filter((h) => h.cls === c.id);
+      const value = sum(list.map((h) => h.value));
+      const actual = value / A * 100;
+      const drift = actual - c.target;
+      const amt = (c.target - actual) / 100 * assets;
+      const o = Object.assign({}, c, { value, actual, drift, amt, count: list.length });
+      clsById[c.id] = o;
+      return o;
+    });
+    const cashValue = clsById.cash.value;
+    const riskVal = sum(C.filter((c) => D.risky.indexOf(c.id) >= 0).map((c) => c.value));
+    const defVal = assets - riskVal;
+    const needAdjust = C.filter((c) => Math.abs(c.drift) >= 2).length;
+
+    // ---- the chosen period
+    const gran = s.gran;
+    const presetsBy = {
+      day: [['d7', '近 7 天'], ['d30', '近 30 天'], ['d90', '近 90 天'], ['ytd', '今年以来'], ['custom', '自定义范围']],
+      week: [['w8', '近 8 周'], ['w12', '近 12 周'], ['w26', '近 26 周'], ['ytd', '今年以来'], ['custom', '自定义范围']],
+      month: [['m3', '近 3 个月'], ['m6', '近 6 个月'], ['m12', '近 12 个月'], ['ytd', '今年以来'], ['custom', '自定义范围']]
+    };
+    const defPreset = { day: 'd30', week: 'w12', month: 'm12' };
+    let preset = s.preset;
+    if (!presetsBy[gran].some((p) => p[0] === preset)) preset = defPreset[gran];
+    const tdate = new Date(todayN * 864e5);
+    let startN, endN = todayN;
+    if (preset === 'd7') startN = todayN - 6;
+    else if (preset === 'd30') startN = todayN - 29;
+    else if (preset === 'd90') startN = todayN - 89;
+    else if (preset === 'w8') startN = this.weekStart(todayN) - 7 * 7;
+    else if (preset === 'w12') startN = this.weekStart(todayN) - 11 * 7;
+    else if (preset === 'w26') startN = this.weekStart(todayN) - 25 * 7;
+    else if (preset === 'm3' || preset === 'm6' || preset === 'm12') {
+      const k = { m3: 3, m6: 6, m12: 12 }[preset];
+      startN = Math.round(Date.UTC(tdate.getUTCFullYear(), tdate.getUTCMonth() - (k - 1), 1) / 864e5);
+    } else if (preset === 'ytd') startN = this.dayNum('2026-01-01');
+    else {
+      const okd = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x || '');
+      startN = okd(s.cStart) ? this.dayNum(s.cStart) : todayN - 29;
+      endN = okd(s.cEnd) ? this.dayNum(s.cEnd) : todayN;
+      if (endN < startN) { const tmp = startN; startN = endN; endN = tmp; }
+    }
+    startN = Math.max(startN, dayStart); endN = Math.min(Math.max(endN, startN), todayN);
+    const lenDays = endN - startN + 1;
+
+    // buckets (one per day / week / month)
+    const buckets = [];
+    if (gran === 'day') { for (let d = startN; d <= endN; d++) buckets.push({ s: d, e: d }); }
+    else if (gran === 'week') { for (let b = this.weekStart(startN); b <= endN; b += 7) buckets.push({ s: Math.max(b, startN), e: Math.min(b + 6, endN) }); }
+    else {
+      let cd = new Date(startN * 864e5), y = cd.getUTCFullYear(), m = cd.getUTCMonth();
+      for (;;) {
+        const first = Math.round(Date.UTC(y, m, 1) / 864e5), lastD = Math.round(Date.UTC(y, m + 1, 0) / 864e5);
+        if (first > endN) break;
+        buckets.push({ s: Math.max(first, startN), e: Math.min(lastD, endN) });
+        m++; if (m > 11) { m = 0; y++; }
+      }
+    }
+    const nb = buckets.length;
+    const md = (dn) => { const d = new Date(dn * 864e5); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
+    const wk = ['日', '一', '二', '三', '四', '五', '六'];
+    const shortLabel = (b) => {
+      if (gran === 'day') return md(b.s);
+      if (gran === 'week') return md(b.s);
+      const d = new Date(b.s * 864e5); return (d.getUTCMonth() + 1) + '月';
+    };
+    const fullLabel = (b) => {
+      const d = new Date(b.s * 864e5), e = new Date(b.e * 864e5);
+      if (gran === 'day') return d.getUTCFullYear() + '年' + md(b.s).replace('/', '月') + '日（周' + wk[d.getUTCDay()] + '）';
+      if (gran === 'week') return md(b.s) + ' – ' + md(b.e) + ' 当周' + (b.e === todayN ? '（至今）' : '');
+      return d.getUTCFullYear() + '年' + (d.getUTCMonth() + 1) + '月' + (b.e === todayN && e.getUTCDate() !== new Date(Date.UTC(e.getUTCFullYear(), e.getUTCMonth() + 1, 0)).getUTCDate() ? '（至今）' : '');
+    };
+    const step = Math.max(1, Math.ceil(nb / 12));
+    const inc = buckets.map((b) => rangeSum(incPre, b.s, b.e));
+    const exp = buckets.map((b) => rangeSum(expPre, b.s, b.e));
+    const tInc = sum(inc), tExp = sum(exp), tNet = tInc - tExp, rate = tInc > 0 ? tNet / tInc * 100 : 0;
+    const monthlyExp = lenDays > 0 ? tExp / lenDays * 30.4 : 0;
+    const reserve = monthlyExp > 0 ? cashValue / monthlyExp : 0;
+    const rangeText = this.dayStr(startN) + ' 至 ' + this.dayStr(endN);
+    const granName = { day: '日', week: '周', month: '月' }[gran];
+
+    // previous period of the same length (only when the ledger reaches that far back)
+    const prevStart = startN - lenDays, prevEnd = startN - 1;
+    const hasPrev = prevStart >= dayStart;
+    const pInc = hasPrev ? rangeSum(incPre, prevStart, prevEnd) : 0, pExp = hasPrev ? rangeSum(expPre, prevStart, prevEnd) : 0;
+    const chg = (cur, prev, goodUp) => {
+      if (!hasPrev || prev <= 0) return { d: '', t: '' };
+      const p = (cur - prev) / prev * 100;
+      const up = p >= 0;
+      return { d: (up ? '▲ ' : '▼ ') + Math.abs(p).toFixed(1) + '% 较上一期', t: (up === goodUp) ? 'pos' : 'neg' };
+    };
+
+    // ---- net worth
+    const nws = buckets.map((b) => nwAt(b.e));
+    const base = nwAt(startN - 1);
+    const dNw = nwNow - base;
+
+    // ---- navigation
+    const cur2 = {};
+    ['ov', 'flow', 'alloc', 'assets', 'fx'].forEach((k2) => { cur2[k2] = view === k2 ? 'page' : 'false'; });
+    const titles = {
+      ov: ['总览', '资产、收支与配置的整体概况'],
+      flow: ['收支分析', '看清钱从哪里来、花到哪里去'],
+      alloc: ['资产配置', '当前配置与目标比例的偏离，以及再平衡建议'],
+      assets: ['资产明细', '每一笔持仓与账户的市值、成本与盈亏'],
+      fx: ['货币换算', '主流货币互换，并设置全站的显示币种']
+    };
+
+    // ---- KPIs (numbers count up with T)
+    const tints = ['sage', 'blush', 'butter', 'sky'];
+    const k = (i, label, cu, nm, delta, dtone, sub) => ({ label, cur: cu, num: nm, hasDelta: !!delta, delta, tone: dtone, sub, cls: 'tile kt ' + tints[i % 4] });
+    let kpis = [];
+    const cI = chg(tInc, pInc, true), cE = chg(tExp, pExp, false);
+    const pNet = pInc - pExp;
+    const cN = (!hasPrev) ? { d: '', t: '' } : { d: (tNet >= pNet ? '▲ ' : '▼ ') + sgn(tNet - pNet).replace(/^[+−]/, '') + ' 较上一期', t: tNet >= pNet ? 'pos' : 'neg' };
+    if (view === 'ov') {
+      kpis = [
+        k(0, '总资产', sym, num(assets * T), '', '', '共 ' + H.length + ' 项持仓与账户'),
+        k(1, '负债', sym, num(liab * T), '', '', '负债率 ' + pc(liab / A * 100)),
+        k(2, '区间结余', sym, num(tNet * T), '', '', '收入 ' + fmt(tInc) + ' · 支出 ' + fmt(tExp)),
+        k(3, '储蓄率', '', (rate * T).toFixed(1) + '%', '', '', '区间收入的 ' + pc(rate, 0) + ' 被存下')
+      ];
+    } else if (view === 'flow') {
+      kpis = [
+        k(0, '区间收入', sym, num(tInc * T), cI.d, cI.t, '日均 ' + fmt(tInc / lenDays)),
+        k(1, '区间支出', sym, num(tExp * T), cE.d, cE.t, '日均 ' + fmt(tExp / lenDays)),
+        k(2, '区间结余', sym, num(tNet * T), cN.d, cN.t, '储蓄率 ' + pc(rate)),
+        k(3, '应急储备', '', (reserve * T).toFixed(1) + ' 个月', '', '', '现金与存款 ÷ 月均支出')
+      ];
+    } else if (view === 'alloc') {
+      kpis = [
+        k(0, '进取型资产', '', (riskVal / A * 100 * T).toFixed(1) + '%', '', '', fmt(riskVal)),
+        k(3, '防御型资产', '', (defVal / A * 100 * T).toFixed(1) + '%', '', '', fmt(defVal)),
+        k(2, '应急储备', '', (reserve * T).toFixed(1) + ' 个月', '', '', '现金与存款 ' + fmt(cashValue)),
+        k(1, '待调整类别', '', Math.round(needAdjust * T) + ' 项', '', '', '偏离目标 2 个百分点以上')
+      ];
+    } else if (view === 'assets') {
+      const pnlAll = assets - costAll;
+      kpis = [
+        k(3, '总市值', sym, num(assets * T), '', '', H.length + ' 项持仓与账户'),
+        k(2, '总成本', sym, num(costAll * T), '', '', '含现金类本金'),
+        k(0, '浮动盈亏', sym, num(pnlAll * T), (pnlAll >= 0 ? '▲ 高于成本' : '▼ 低于成本'), tone(pnlAll), '持仓整体' + (pnlAll >= 0 ? '盈利' : '亏损')),
+        k(1, '综合收益率', '', (pnlAll / (costAll || 1) * 100 * T).toFixed(1) + '%', '', '', '浮动盈亏 ÷ 总成本')
+      ];
+    }
+
+    // ---- net worth chart
+    const W = 600, HH = 220, pt = 20, pb = 20;
+    const mn = Math.min.apply(null, nws), mx = Math.max.apply(null, nws);
+    const padv = (mx - mn) * 0.14 || Math.max(1, Math.abs(mx) * 0.01);
+    const lo2 = mn - padv, hi2 = mx + padv;
+    const px = (i) => 12 + (nb === 1 ? 0.5 : i / (nb - 1)) * (W - 24);
+    const py = (v) => pt + (1 - (v - lo2) / (hi2 - lo2)) * (HH - pt - pb);
+    let line = '';
+    nws.forEach((v, i) => {
+      const x = px(i), y = py(v);
+      if (i === 0) { line = 'M' + x.toFixed(1) + ' ' + y.toFixed(1); }
+      else {
+        const x0 = px(i - 1), y0 = py(nws[i - 1]), cx = (x0 + x) / 2;
+        line += ' C' + cx.toFixed(1) + ' ' + y0.toFixed(1) + ',' + cx.toFixed(1) + ' ' + y.toFixed(1) + ',' + x.toFixed(1) + ' ' + y.toFixed(1);
+      }
+    });
+    if (nb === 1) { line = 'M12 ' + py(nws[0]).toFixed(1) + ' L' + (W - 12) + ' ' + py(nws[0]).toFixed(1); }
+    const area = line + ' L' + (nb === 1 ? W - 12 : px(nb - 1)).toFixed(1) + ' ' + HH + ' L' + px(0).toFixed(1) + ' ' + HH + ' Z';
+    const nwTicks = [0, 1, 2, 3].map((q) => { const v = lo2 + (hi2 - lo2) * q / 3; return { y: py(v) / HH * 100, label: wan(v) }; });
+    const hn = Math.min(s.hn === null || s.hn === undefined ? nb - 1 : s.hn, nb - 1);
+    const ps = Math.max(1, Math.ceil(nb / 18));
+    const nwPts = [];
+    for (let i = 0; i < nb; i++) { if (i % ps === 0 || i === nb - 1) nwPts.push({ left: px(i) / W * 100, top: py(nws[i]) / HH * 100, aria: fullLabel(buckets[i]) + ' 净资产 ' + fmt(nws[i]), enter: set({ hn: i }) }); }
+    const nwX = buckets.map((b, i) => ({ left: px(i) / W * 100, text: i % step === 0 ? shortLabel(b) : '', cls: '' }));
+    const hnPrev = hn > 0 ? nws[hn - 1] : base;
+
+    // ---- income / expense bars
+    const niceCeil = (v) => { if (v <= 0) return 1; const e = Math.pow(10, Math.floor(Math.log(v) / Math.LN10)); const f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; };
+    const maxV = Math.max.apply(null, inc.concat(exp).concat([1]));
+    const top = niceCeil(maxV);
+    const hf = Math.min(s.hf === null || s.hf === undefined ? nb - 1 : s.hf, nb - 1);
+    const bars = buckets.map((b, i) => ({
+      label: i % step === 0 ? shortLabel(b) : '', i,
+      hi: inc[i] / top * 100, he: exp[i] / top * 100,
+      cls: 'barcol' + (i === hf ? ' on' : ''),
+      aria: fullLabel(b) + ' 收入 ' + fmt(inc[i]) + ' 支出 ' + fmt(exp[i]),
+      enter: set({ hf: i })
+    }));
+    const flowTicks = [0, 1, 2, 3, 4].map((q) => ({ y: (1 - q / 4) * 100, label: axis(top * q / 4) }));
+    const hfNetV = inc[hf] - exp[hf];
+
+    // ---- categories (from the ledger, for the chosen period)
+    const inRange = allTxs.filter((t) => t.dn >= startN && t.dn <= endN);
+    const byCat = (isInc) => {
+      const m = {};
+      inRange.forEach((t) => { if ((t.amt > 0) === isInc) m[t.cat] = (m[t.cat] || 0) + Math.abs(t.amt); });
+      const arr = Object.keys(m).map((c) => ({ name: c, v: m[c] })).sort((p, q) => q.v - p.v);
+      const tot = sum(arr.map((x) => x.v)) || 1, mxv = arr.length ? arr[0].v : 1;
+      return arr.map((x) => ({ name: x.name, amount: fmt(x.v), share: pc(x.v / tot * 100, 0), w: x.v / mxv * 100 }));
+    };
+    const cats = byCat(false), incs = byCat(true);
+
+    // ---- transactions
+    const txAll = inRange.slice().sort((p, q) => (p.date < q.date ? 1 : p.date > q.date ? -1 : (q.id > p.id ? 1 : -1))).map((t) => ({
+      id: t.id, date: t.date.slice(5).replace('-', '/'), desc: t.desc, cat: t.cat, acct: t.acct, type: t.amt > 0 ? 'in' : 'out',
+      amount: sgn(t.amt), tone: t.amt > 0 ? 'pos' : '', mine: !!t.user,
+      del: () => { const arr = (s.user || []).filter((u) => u.id !== t.id); this.persist(arr); this.setState({ user: arr, flash: '已删除一笔记录' }); this.flashOff(); }
+    }));
+    const cntIn = txAll.filter((t) => t.type === 'in').length, cntOut = txAll.length - cntIn;
+    let txs;
+    if (view === 'ov') { txs = txAll.slice(0, 6); }
+    else { const f = s.tx === 'all' ? txAll : txAll.filter((t) => t.type === s.tx); txs = f.slice(0, s.limit); this._moreLeft = f.length - txs.length; }
+    const moreLeft = view === 'ov' ? 0 : this._moreLeft;
+    const txFilters = [
+      { label: '全部', count: txAll.length, on: s.tx === 'all', pick: set({ tx: 'all', limit: 12 }) },
+      { label: '收入', count: cntIn, on: s.tx === 'in', pick: set({ tx: 'in', limit: 12 }) },
+      { label: '支出', count: cntOut, on: s.tx === 'out', pick: set({ tx: 'out', limit: 12 }) }
+    ];
+
+    // ---- allocation mosaic
+    const fc = clsById[s.focus];
+    const legend = C.map((c, i) => ({
+      i, name: c.name, bg: c.bg, pctText: pc(c.actual), valueText: fmt(c.value),
+      grow: Math.max(c.actual, 0.5).toFixed(2), basis: Math.max(120, Math.round(Math.max(c.actual, 0) * 5)),
+      on: s.focus === c.id,
+      cls: 'mt' + (s.focus === c.id ? ' on' : '') + (s.focus !== 'all' && s.focus !== c.id ? ' dim' : ''),
+      pick: set({ focus: s.focus === c.id ? 'all' : c.id })
+    }));
+
+    // ---- rebalance
+    const scaleMax = 40;
+    const rebal = C.map((c) => {
+      const ok = Math.abs(c.drift) < 2;
+      const over = c.drift > 0;
+      return {
+        name: c.name, color: c.color, w: Math.max(0, Math.min(c.actual / scaleMax * 100, 100)), tickLeft: c.target / scaleMax * 100,
+        actual: pc(c.actual), target: pc(c.target, 0),
+        stCls: ok ? 'ok' : (over ? 'over' : 'under'), stText: ok ? '均衡' : (over ? '超配' : '低配'),
+        advice: ok ? '偏离 ' + (c.drift >= 0 ? '+' : '−') + Math.abs(c.drift).toFixed(1) + ' 点' : (over ? '建议减持约 ' : '建议增持约 ') + fmt(Math.abs(c.amt))
+      };
+    });
+
+    // ---- holdings table
+    const holdFilters = [{ label: '全部', count: H.length, on: s.cls === 'all', pick: set({ cls: 'all' }) }].concat(
+      C.map((c) => ({ label: c.name, count: c.count, on: s.cls === c.id, pick: set({ cls: c.id }) })));
+    const holdList = (s.cls === 'all' ? H : H.filter((h) => h.cls === s.cls));
+    const maxW = Math.max.apply(null, H.map((h) => Math.max(h.value, 0) / A * 100).concat([1]));
+    const holds = holdList.map((h) => ({
+      name: h.name, code: h.code, clsName: clsById[h.cls].name, color: clsById[h.cls].color,
+      value: fmt(h.value), cost: fmt(h.cost), pnl: h.pnl === 0 ? '—' : sgn(h.pnl),
+      pnlPct: h.pnl === 0 ? '—' : spc(h.pnl / (h.cost || 1) * 100), tone: tone(h.pnl),
+      weight: pc(h.value / A * 100), bar: Math.max(h.value, 0) / A * 100 / maxW * 100
+    }));
+    const pl = H.filter((h) => h.pnl !== 0).sort((a, b) => b.pnl - a.pnl);
+    const pMax = pl.length ? Math.max.apply(null, pl.map((h) => Math.abs(h.pnl))) : 1;
+    const pnls = pl.map((h) => ({ name: h.name, w: Math.abs(h.pnl) / pMax * 100, color: h.pnl > 0 ? '#4E7F63' : '#D4733F', tone: tone(h.pnl), text: sgn(h.pnl) }));
+    const liabs = liabList.map((l) => ({ name: l.name, note: l.note, balance: fmt(l.balance) }));
+
+    // ---- converter
+    const optList = D.currencies.map((c) => ({ code: c.code, label: c.name + ' ' + c.code }));
+    const amtNum = parseFloat(String(s.cvAmt).replace(/,/g, ''));
+    const amtOk = isFinite(amtNum);
+    const fromC = byCode[s.cvFrom] || byCode.USD, toC = byCode[s.cvTo] || byCode.TWD;
+    const pair = (a, b) => perUSD(b) / perUSD(a);
+    const fmtRate = (r) => r >= 100 ? r.toFixed(2) : (r >= 1 ? r.toFixed(3) : r.toFixed(4));
+    const conv2 = (x, to) => x * pair(fromC.code, to);
+    const res2 = (x, code) => x.toLocaleString('en-US', { minimumFractionDigits: code === 'JPY' ? 0 : 2, maximumFractionDigits: code === 'JPY' ? 0 : 2 });
+    const quick = D.currencies.map((c) => ({
+      name: c.name, code: c.code,
+      value: amtOk ? c.sym + ' ' + res2(conv2(amtNum, c.code), c.code) : '—',
+      rate: c.code === fromC.code ? '—' : fmtRate(pair(fromC.code, c.code))
+    }));
+    const rateRows = D.currencies.map((c) => ({
+      name: c.name, code: c.code, aria: '1 美元兑' + c.name,
+      val: c.code === 'USD' ? '1' : (s.rates[c.code] !== undefined ? s.rates[c.code] : String(c.perUSD)),
+      fixed: c.code === 'USD',
+      edit: (e) => { const r = Object.assign({}, s.rates); r[c.code] = e.target.value; this.setState({ rates: r }); }
+    }));
+
+    // ---- add-a-transaction form
+    const F = Object.assign({ type: 'out', date: TODAY, amt: '', cat: '餐饮', acct: '玉山活期', desc: '' }, s.form || {});
+    const setF = (key) => (e) => { const f = Object.assign({}, F); f[key] = e.target.value; this.setState({ form: f, formErr: '' }); };
+    const catsFor = F.type === 'out' ? D.expCats : D.incCats;
+    const fCat = catsFor.indexOf(F.cat) >= 0 ? F.cat : catsFor[0];
+    const saveTx = () => {
+      const a = parseFloat(String(F.amt).replace(/,/g, ''));
+      if (!(a > 0)) { this.setState({ formErr: '请输入大于 0 的金额' }); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(F.date) || this.dayNum(F.date) < minN || this.dayNum(F.date) > todayN) { this.setState({ formErr: '日期需在 2015-01-01 至 ' + TODAY + ' 之间' }); return; }
+      const twd = a / fx;
+      const rec = { id: 'u' + Date.now(), date: F.date, desc: F.desc.trim() || fCat, cat: fCat, acct: F.acct, amt: Math.round(F.type === 'out' ? -twd : twd) };
+      const arr = (s.user || []).concat([rec]);
+      this.persist(arr);
+      this.setState({ user: arr, form: Object.assign({}, F, { amt: '', desc: '' }), formErr: '', flash: '已记录：' + rec.desc + ' ' + (rec.amt < 0 ? '−' : '+') + sym + numC(Math.abs(a), disp) });
+      this.flashOff();
+    };
+
+    // ---- data import
+    const impMode = s.impMode || 'tx';
+    const impCurCode = byCode[s.impCur] ? s.impCur : disp;
+    const toTWD = (x) => x * perUSD('TWD') / perUSD(impCurCode);
+    const examples = {
+      tx: '日期,金额,类别,账户,备注\n2026-10-01,12000,工资,银行卡,十月工资\n2026-10-02,-2300,住房,银行卡,房租\n2026-10-03,-35.5,餐饮,支付宝,午餐',
+      hold: '名称,代码,类别,市值,成本\n招商银行活期,活期,现金,50000,50000\n沪深300ETF,510300,基金,32000,30000\n黄金ETF,518880,黄金,15000,13500',
+      liab: '名称,备注,余额\n助学贷款,年利率 1.15%,80000\n信用卡待缴,下期账单日 11 月 5 日,3200'
+    };
+    const hints = {
+      tx: '列：日期、金额、类别、账户、备注。金额为负是支出、为正是收入；也可以用「类型」列写收入/支出，或用「收入」「支出」两列。日期支持 2026-10-01、2026/10/1、20261001、民国 115/10/01。相同的记录重复导入会自动跳过。',
+      hold: '列：名称、代码、类别、市值、成本。类别写 现金 / 股票 / 基金 / 债券 / 黄金 / 加密 即可；成本留空则按市值。名称相同的持仓会被覆盖。',
+      liab: '列：名称、备注、余额。名称相同的负债会被覆盖。'
+    };
+    const hasMine = (s.user || []).length + (s.userHold || []).length + (s.userLiab || []).length > 0;
+    const doImport = () => {
+      const r = this.parseImport(s.impText || '', impMode, toTWD, todayN, minN, s.user || []);
+      const n = r.tx.length + r.hold.length + r.liab.length;
+      if (!n) {
+        const why = !(s.impText || '').trim() ? '请先选择文件或粘贴内容' : (r.dup && !r.bad ? '这些记录已经导入过了（共 ' + r.dup + ' 条重复）' : '没有识别出有效数据（' + r.bad + ' 行无法识别）。请检查表头和日期格式，点“填入示例”可查看格式');
+        this.setState({ impMsg: why, impOk: false }); return;
+      }
+      const patch = { impOk: true, nav: s.nav + 1, hf: null, hn: null };
+      let msg = '';
+      if (impMode === 'tx') {
+        const arr = (s.user || []).concat(r.tx); patch.user = arr; this.persist(arr);
+        msg = '已导入 ' + r.tx.length + ' 笔流水' + (r.dup ? '，跳过重复 ' + r.dup + ' 条' : '') + (r.bad ? '，' + r.bad + ' 行无法识别' : '') + (r.future ? '，' + r.future + ' 行日期晚于今天已忽略' : '');
+      } else if (impMode === 'hold') {
+        const names = {}; r.hold.forEach((h) => { names[h.name + '|' + h.code] = 1; });
+        const arr = (s.userHold || []).filter((h) => !names[h.name + '|' + h.code]).concat(r.hold); patch.userHold = arr; this.save('chiheng.userHold.v1', arr);
+        msg = '已导入 ' + r.hold.length + ' 项持仓' + (r.bad ? '，' + r.bad + ' 行无法识别' : '');
+      } else {
+        const names = {}; r.liab.forEach((h) => { names[h.name] = 1; });
+        const arr = (s.userLiab || []).filter((h) => !names[h.name]).concat(r.liab); patch.userLiab = arr; this.save('chiheng.userLiab.v1', arr);
+        msg = '已导入 ' + r.liab.length + ' 项负债' + (r.bad ? '，' + r.bad + ' 行无法识别' : '');
+      }
+      if (useSample && !hasMine) { patch.useSample = false; this.save('chiheng.useSample.v1', '0'); msg += '。已自动切换为“只用我的数据”，可随时切回示例'; }
+      patch.impMsg = msg; patch.impText = '';
+      this.setState(patch); this.kick();
+    };
+    const clearMine = () => {
+      if (!s.confirmClear) { this.setState({ confirmClear: true }); return; }
+      this.persist([]); this.save('chiheng.userHold.v1', []); this.save('chiheng.userLiab.v1', []);
+      this.setState({ user: [], userHold: [], userLiab: [], confirmClear: false, impMsg: '已清除你导入和记录的全部数据', impOk: true, nav: s.nav + 1 }); this.kick();
+    };
+    const onFile = (e) => {
+      const el = e.target, f = el.files && el.files[0];
+      if (!f) return;
+      f.arrayBuffer().then((buf) => {
+        const text = this.decodeBytes(buf).replace(/^\uFEFF/, '');
+        const lines = text.split(/\r?\n/).filter((l) => l.trim()).length;
+        this.setState({ impText: text, impMsg: '已读取 ' + f.name + '（' + lines + ' 行），确认无误后点“导入”', impOk: true });
+        try { el.value = ''; } catch (err) { /* ignore */ }
+      }).catch(() => { this.setState({ impMsg: '读取文件失败，请改用粘贴', impOk: false }); });
+    };
+    const wd = new Date(todayN * 864e5).getUTCDay();
+    const todayText = (new Date(todayN * 864e5).getUTCFullYear()) + ' 年 ' + (new Date(todayN * 864e5).getUTCMonth() + 1) + ' 月 ' + (new Date(todayN * 864e5).getUTCDate()) + ' 日 · 周' + wk[wd];
+
+    const viewIdx = { ov: 0, flow: 1, alloc: 2, assets: 3, fx: 4 }[view];
+    const lede0 = titles[view][1];
+
+    return {
+      cur: cur2, navIdx: viewIdx,
+      appCls: s.hide ? 'hid' : '',
+      stageCls: (s.nav % 2 === 0 ? 'a' : 'b'),
+      goOv: go({ view: 'ov' }), goFlow: go({ view: 'flow' }), goAlloc: go({ view: 'alloc' }), goAssets: go({ view: 'assets' }), goFx: go({ view: 'fx' }),
+      title: titles[view][0], lede: (view === 'ov' || view === 'flow') ? lede0 + ' · ' + rangeText + ' · 按' + granName : lede0,
+      showRange: view === 'ov' || view === 'flow',
+      granX: { day: 0, week: 1, month: 2 }[gran],
+      setDay: go({ gran: 'day', preset: (preset === 'ytd' || preset === 'custom') ? preset : 'd30', limit: 12 }),
+      setWeek: go({ gran: 'week', preset: (preset === 'ytd' || preset === 'custom') ? preset : 'w12', limit: 12 }),
+      setMonth: go({ gran: 'month', preset: (preset === 'ytd' || preset === 'custom') ? preset : 'm12', limit: 12 }),
+      isDay: gran === 'day', isWeek: gran === 'week', isMonth: gran === 'month',
+      preset, presetOpts: presetsBy[gran].map((p) => ({ code: p[0], label: p[1] })),
+      setPreset: (e) => { this.setState({ preset: e.target.value, nav: s.nav + 1, hf: null, hn: null, limit: 12 }); this.kick(); },
+      showCustom: preset === 'custom' && (view === 'ov' || view === 'flow'),
+      cStart: this.dayStr(startN), cEnd: this.dayStr(endN), dMin: '2015-01-01', dMax: TODAY,
+      setCStart: (e) => { this.setState({ cStart: e.target.value, preset: 'custom', hf: null, hn: null }); },
+      setCEnd: (e) => { this.setState({ cEnd: e.target.value, preset: 'custom', hf: null, hn: null }); },
+      disp, dispOpts: optList, setDisp: (e) => { this.setState({ disp: e.target.value }); this.save('chiheng.disp.v1', e.target.value); },
+      todayText,
+      dataTag: useSample ? '示例数据' : '我的数据',
+      tagCls: useSample ? 'tag demo' : 'tag mine',
+      sampleLabel: useSample ? '只用我的数据' : '显示示例数据',
+      toggleSample: () => { const v = !useSample; this.save('chiheng.useSample.v1', v ? '1' : '0'); this.setState({ useSample: v, nav: s.nav + 1, hf: null, hn: null }); this.kick(); },
+      showImport: s.showImport, importLabel: s.showImport ? '收起导入' : '导入数据',
+      toggleImport: set({ showImport: !s.showImport, impMsg: '' }),
+      impModeX: { tx: 0, hold: 1, liab: 2 }[impMode],
+      impTx: impMode === 'tx', impHold: impMode === 'hold', impLiab: impMode === 'liab',
+      setImpTx: set({ impMode: 'tx', impMsg: '' }), setImpHold: set({ impMode: 'hold', impMsg: '' }), setImpLiab: set({ impMode: 'liab', impMsg: '' }),
+      impHint: hints[impMode], impText: s.impText || '', impCur: impCurCode, impCurOpts: optList,
+      setImpText: (e) => { this.setState({ impText: e.target.value }); },
+      setImpCur: (e) => { this.setState({ impCur: e.target.value }); },
+      fillExample: set({ impText: examples[impMode], impMsg: '已填入示例，可直接点“导入”试一下，或改成你自己的数据', impOk: true }),
+      onFile, doImport,
+      impMsg: s.impMsg, hasImpMsg: !!s.impMsg, impMsgCls: s.impOk ? 'imsg ok' : 'imsg err',
+      clearMine, clearLabel: s.confirmClear ? '再点一次确认清除' : '清除我的数据', canClear: hasMine,
+      cancelClear: set({ confirmClear: false }),
+      hide: s.hide, hideLabel: s.hide ? '显示金额' : '隐藏金额',
+      toggleHide: set({ hide: !s.hide }),
+      adding: s.adding, toggleAdd: set({ adding: !s.adding, formErr: '' }), addLabel: s.adding ? '收起' : '记一笔',
+      typeX: F.type === 'out' ? '0%' : '100%', isOut: F.type === 'out', isIn: F.type === 'in',
+      setOut: set({ form: Object.assign({}, F, { type: 'out', cat: '餐饮' }), formErr: '' }),
+      setIn: set({ form: Object.assign({}, F, { type: 'in', cat: '助教薪资' }), formErr: '' }),
+      fDate: F.date, fAmt: F.amt, fCat, fAcct: F.acct, fDesc: F.desc, fErr: s.formErr,
+      setFDate: setF('date'), setFAmt: setF('amt'), setFCat: setF('cat'), setFAcct: setF('acct'), setFDesc: setF('desc'),
+      catOpts: catsFor.map((c) => ({ code: c, label: c })), acctOpts: D.accts.map((c) => ({ code: c, label: c })),
+      saveTx, cancelTx: set({ adding: false, formErr: '' }),
+      flash: s.flash, hasFlash: !!s.flash,
+      showKpis: view !== 'ov' && view !== 'fx',
+      showKgrid: view === 'ov',
+      kpis,
+      showHero: view === 'ov',
+      heroCur: sym, heroNum: num(nwNow * T),
+      heroDelta: (dNw >= 0 ? '▲ ' : '▼ ') + sgn(dNw) + ((base > 0 && Math.abs(dNw / base) < 10) ? '（' + spc(dNw / base * 100) + '）' : ''), heroTone: tone(dNw),
+      heroSub: '自 ' + md(startN) + ' 起',
+      prevWord: '较上一' + granName,
+      nwTicks, nwLine: line, nwArea: area, nwPts, nwX,
+      curLeft: px(hn) / W * 100, curTop: py(nws[hn]) / HH * 100,
+      hnMonth: fullLabel(buckets[hn]), hnValue: fmt(nws[hn]), hnDelta: sgn(nws[hn] - hnPrev), hnTone: tone(nws[hn] - hnPrev),
+      showMosaic: view === 'ov' || view === 'alloc',
+      mosaicWidth: 'w1', mosaicCls: view === 'alloc' ? 'big' : '',
+      dLabel: fc ? fc.name : '总资产', dValue: fmt(fc ? fc.value : assets),
+      dSub: fc ? pc(fc.actual) + ' · 目标 ' + fc.target + '%' : '共 ' + H.length + ' 项持仓', legend,
+      showBrkTop: view === 'ov',
+      showBars: view === 'ov' || view === 'flow',
+      bars, flowTicks, barMin: Math.max(440, nb * 14 + 60),
+      hfMonth: fullLabel(buckets[hf]), hfInc: fmt(inc[hf]), hfExp: fmt(exp[hf]), hfNet: sgn(hfNetV), hfTone: tone(hfNetV),
+      showCats: view === 'ov' || view === 'flow',
+      catSub: '共 ' + cats.length + ' 类', hasCats: cats.length > 0,
+      cats,
+      showBrkMid: view === 'ov',
+      showBrkCats: view === 'flow',
+      showInc: view === 'flow', incSub: '共 ' + incs.length + ' 类', incs,
+      showTx: view === 'ov' || view === 'flow',
+      txCls: 'w2',
+      txTitle: view === 'ov' ? '最近流水' : '收支流水',
+      showTxFilter: view === 'flow', showTxAll: view === 'ov',
+      txFilters, txs, hasTxs: txs.length > 0, showMore: moreLeft > 0, moreText: '显示更多（还有 ' + moreLeft + ' 笔）',
+      showMoreAct: set({ limit: s.limit + 25 }),
+      showRebal: view === 'alloc', rebal,
+      showBrkRebal: view === 'alloc',
+      showRisk: view === 'alloc',
+      riskW: riskVal / A * 100, defW: defVal / A * 100,
+      riskText: pc(riskVal / A * 100), defText: pc(defVal / A * 100),
+      riskAmt: fmt(riskVal), defAmt: fmt(defVal),
+      showHold: view === 'assets', holdFilters, holds,
+      showBrkHold: view === 'assets',
+      showPnl: view === 'assets', pnls,
+      showLiab: view === 'assets', liabs, liabTotal: fmt(liab), liabRate: pc(liab / A * 100),
+      showFx: view === 'fx',
+      cvAmt: s.cvAmt, cvFrom: s.cvFrom, cvTo: s.cvTo, fxOpts: optList,
+      setAmt: (e) => { this.setState({ cvAmt: e.target.value }); },
+      setFrom: (e) => { this.setState({ cvFrom: e.target.value }); },
+      setTo: (e) => { this.setState({ cvTo: e.target.value }); },
+      swapFx: () => { this.setState({ cvFrom: s.cvTo, cvTo: s.cvFrom }); },
+      resLabel: amtOk ? res2(amtNum, fromC.code) + ' ' + fromC.name + ' 约等于' : '请输入有效金额',
+      resValue: amtOk ? toC.sym + ' ' + res2(conv2(amtNum, toC.code), toC.code) : '—',
+      resRate: '1 ' + fromC.code + ' = ' + fmtRate(pair(fromC.code, toC.code)) + ' ' + toC.code + '　·　1 ' + toC.code + ' = ' + fmtRate(pair(toC.code, fromC.code)) + ' ' + fromC.code,
+      quick, quickSub: '以 ' + (amtOk ? res2(amtNum, fromC.code) : '—') + ' ' + fromC.code + ' 为基准',
+      rateRows, resetRates: set({ rates: {} })
+    };
+  }
+
+  flashOff() {
+    if (this._ft) clearTimeout(this._ft);
+    this._ft = setTimeout(() => { this.setState({ flash: '' }); }, 3000);
+  }
+}
+
+</script>
+</body>
+</html>
